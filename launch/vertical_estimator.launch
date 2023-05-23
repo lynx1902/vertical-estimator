@@ -1,0 +1,43 @@
+<launch>
+  <arg name="uav_name" default="$(optenv UAV_NAME uav1)"/>
+  
+  <arg name="DEBUG" default="false" />
+  <arg unless="$(arg DEBUG)" name="launch_prefix_debug" value=""/>
+  <arg     if="$(arg DEBUG)" name="launch_prefix_debug" value="debug_roslaunch"/>
+  
+  <arg name="standalone" default="true" />
+  <arg name="manager" default="$(arg uav_name)_waypointflier_manager" />
+  <arg name="n_threads" default="8" />
+  <arg unless="$(arg standalone)" name="nodelet" value="load"/>
+  <arg     if="$(arg standalone)" name="nodelet" value="standalone"/>
+  <arg unless="$(arg standalone)" name="nodelet_manager" value="$(arg manager)"/>
+  <arg     if="$(arg standalone)" name="nodelet_manager" value=""/>
+  <!-- <arg name="range_topic" value="garmin/range" /> -->
+  <!-- <remap from="/$(arg uav_name)/garmin/range" to="/$(arg uav_name)/garmin/range2"/> -->
+  
+  <group ns="$(arg uav_name)">
+    <!-- <remap from="~/$(arg uav_name)/garmin/range" to="/$(arg uav_name)/garmin/range2"/>  -->
+    <node pkg="nodelet" type="nodelet" name="vertical_estimator" args="$(arg nodelet) vertical_estimator/VerticalEstimator $(arg nodelet_manager)" launch-prefix="$(arg launch_prefix_debug)" output="screen">
+      
+      <param name="uav_name" value="$(arg uav_name)" />
+      
+      <rosparam file="$(find vertical_estimator)/config/vertical_estimator.yaml" />
+    
+      
+      <param name="odom_state_topic" value="/$(arg uav_name)/odometry/uav_state" />
+    
+      <param name="odom_main_topic" value="/$(arg uav_name)/odometry/odom_main" />
+      <param name="odom_imu_topic" value="/$(arg uav_name)/odometry/imu_untilted" />
+      <param name="velocity_reduced_topic" value="/odometry/velocity_reduced" />
+      
+      <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R", "measured_poses_B"] </rosparam>
+      <remap        from="~measured_poses_L" to="/$(arg uav_name)/uvdar/measuredPosesL"/>
+      <remap        from="~measured_poses_R" to="/$(arg uav_name)/uvdar/measuredPosesR"/>
+      <remap        from="~measured_poses_B" to="/$(arg uav_name)/uvdar/measuredPosesB"/>
+      
+      
+    </node>
+    
+  </group>
+  
+</launch>

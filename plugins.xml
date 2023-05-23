@@ -1,0 +1,5 @@
+<library path="lib/libVerticalEstimator">
+  <class name="vertical_estimator/VerticalEstimator" type="vertical_estimator::VerticalEstimator" base_class_type="nodelet::Nodelet">
+    <description>VerticalEstimator nodelet</description>
+  </class>
+</library>
