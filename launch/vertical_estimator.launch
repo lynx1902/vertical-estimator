@@ -12,16 +12,15 @@
   <arg     if="$(arg standalone)" name="nodelet" value="standalone"/>
   <arg unless="$(arg standalone)" name="nodelet_manager" value="$(arg manager)"/>
   <arg     if="$(arg standalone)" name="nodelet_manager" value=""/>
-  <!-- <arg name="range_topic" value="garmin/range" /> -->
-  <!-- <remap from="/$(arg uav_name)/garmin/range" to="/$(arg uav_name)/garmin/range2"/> -->
+  
   
   <group ns="$(arg uav_name)">
-    <!-- <remap from="~/$(arg uav_name)/garmin/range" to="/$(arg uav_name)/garmin/range2"/>  -->
+
     <node pkg="nodelet" type="nodelet" name="vertical_estimator" args="$(arg nodelet) vertical_estimator/VerticalEstimator $(arg nodelet_manager)" launch-prefix="$(arg launch_prefix_debug)" output="screen">
       
       <param name="uav_name" value="$(arg uav_name)" />
       
-      <rosparam file="$(find vertical_estimator)/config/vertical_estimator.yaml" />
+      <rosparam file="$(find my_code)/config/vertical_estimator.yaml" />
     
       
       <param name="odom_state_topic" value="/$(arg uav_name)/odometry/uav_state" />

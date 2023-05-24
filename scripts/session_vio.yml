@@ -79,7 +79,7 @@ windows:
           rosservice call /$UAV_NAME/mavros/set_mode 0 offboard'
   
   
-  - state_estimator:
+  - vertical_estimator:
       layout: tiled
       panes:
         - export UAV_NAME=uav29; waitForOdometry; roslaunch my_code vertical_estimator.launch

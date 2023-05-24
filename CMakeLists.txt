@@ -16,7 +16,21 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   roscpp
   sensor_msgs
+  std_msgs
+  std_srvs
+  tf2
+  tf2_ros
+  tf2_msgs 
+  tf2_eigen 
+  tf2_sensor_msgs 
+  tf_conversions 
+  tf2_eigen 
+  tf2_geometry_msgs
+  gazebo_msgs
+  mavros_msgs
+
 )
+# find_package(Eigen3 REQUIRED HINTS /usr/local/lib)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -73,10 +87,12 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs#   mrs_msgs#   nav_msgs#   sensor_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs   
+  mrs_msgs   
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -121,12 +137,12 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-add_library(my_code
+add_library(VerticalEstimator
   src/estimator.cpp
 )
 
@@ -151,7 +167,7 @@ add_library(my_code
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(my_code
+target_link_libraries(VerticalEstimator
   ${catkin_LIBRARIES}
 )
 
