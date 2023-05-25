@@ -77,6 +77,10 @@ namespace vertical_estimator
            
             param_loader.loadParam("measured_poses_topics", measured_poses_topics, measured_poses_topics);
 
+            param_loader.loadParam("range_topic", range_topic);
+
+            param_loader.loadParam("range2_publish_topic", range2_publish_topic);
+
             estimation_frame = uav_name + "/gps_origin";
 
             //}
@@ -91,15 +95,16 @@ namespace vertical_estimator
 
             pub_velocity_uvdar = nh_.advertise<geometry_msgs::Point>("velocity_uvdar", 1);
             
-            pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>("range2", 1);
+            pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>(range2_publish_topic, 1); /*vert estimator*/
 
             pub_velocity_uvdar_fcu = nh_.advertise<geometry_msgs::Point>("velocity_uvdar_fcu", 1);
           
-            pub_estimator_output_fcu =
-                nh_.advertise<geometry_msgs::Point>("estimator_output_fcu", 1); /*estimator position output publisher*/
+            // pub_estimator_output_fcu =
+                // nh_.advertise<geometry_msgs::Point>("estimator_output_fcu", 1); /*estimator position output publisher*/
 
-            
-            sub_garmin_range = nh_.subscribe("range", 1, &VerticalEstimator::GarminRange, this);
+           
+
+            sub_garmin_range = nh_.subscribe(range_topic, 1, &VerticalEstimator::GarminRange, this);
 
             //}
 
@@ -218,31 +223,18 @@ namespace vertical_estimator
             H.resize(1, 3);
             Qq.resize(3, 3);
 
-            // A << 1, 0, def_dt, 0, def_dt * def_dt / 2, 0,
-            //     0, 1, 0, def_dt, 0, def_dt * def_dt / 2,
-            //     0, 0, 1, 0, def_dt, 0,
-            //     0, 0, 0, 1, 0, def_dt,
-            //     0, 0, 0, 0, 1, 0,
-            //     0, 0, 0, 0, 0, 1;
-
+        
             A << 1, def_dt, def_dt * def_dt / 2.0,
                 0, 1, def_dt,
                 0, 0, 1;
 
-            // B << 0,
-            //     0,
-            //     0,
-            //     0,
-            //     0,
-            //     0;
+           
 
             B << 0,
                 0,
                 0;
 
-            // H << 1, 0, 0, 0, 0, 0,
-            //     0, 1, 0, 0, 0, 0;
-
+          
             H << 1, 0, 0;
 
             /* Qq << */
@@ -384,12 +376,7 @@ namespace vertical_estimator
 
         A_t A_dt(double dt)
         {
-            // A << 1, 0, dt, 0, dt * dt / 2, 0,
-            //     0, 1, 0, dt, 0, dt * dt / 2,
-            //     0, 0, 1, 0, dt, 0,
-            //     0, 0, 0, 1, 0, dt,
-            //     0, 0, 0, 0, 1, 0,
-            //     0, 0, 0, 0, 0, 1;
+            
             A << 1, def_dt, def_dt * def_dt / 2,
                 0, 1, def_dt,
                 0, 0, 1;
@@ -400,14 +387,12 @@ namespace vertical_estimator
         {
             if (type == 0)
             {
-                // H << 1, 0, 0, 0, 0, 0,
-                //     0, 1, 0, 0, 0, 0;
+                
                 H << 1, 0, 0;
             }
             else if (type == 1)
             {
-                // H << 0, 0, 1, 0, 0, 0,
-                //     0, 0, 0, 1, 0, 0;
+                
                 H << 0, 1, 0;
             }
             // else if (type == 2)
@@ -460,7 +445,7 @@ namespace vertical_estimator
         /* Subscriber of neighbors derivative states //{ */
         // todo do it without communication
         void NeighborsStateReduced(const geometry_msgs::PointConstPtr &odom_msg, size_t nb_index)
-        {
+        {   return;
             if (virt_id == (int)nb_index)
                 return;
 
@@ -494,10 +479,10 @@ namespace vertical_estimator
             //     ROS_ERROR("LKF failed: %s", e.what());
             // }
         }
-        //}
+        // //}
 
         void callbackUvdarMeasurement(const mrs_msgs::PoseWithCovarianceArrayStamped &msg)
-        {
+        {   
             if ((int)(msg.poses.size()) < 1)
                 return;
 
@@ -921,6 +906,10 @@ namespace vertical_estimator
         };
 
         std::vector<Neighbor> agents;
+
+        std::string range_topic;
+
+        std::string range2_publish_topic;
 
         // Eigen::MatrixXd output(3,3);
         

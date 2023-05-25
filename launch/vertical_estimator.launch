@@ -1,12 +1,12 @@
 <launch>
   <arg name="uav_name" default="$(optenv UAV_NAME uav1)"/>
   
-  <arg name="DEBUG" default="false" />
+  <arg name="DEBUG" default="true" />
   <arg unless="$(arg DEBUG)" name="launch_prefix_debug" value=""/>
   <arg     if="$(arg DEBUG)" name="launch_prefix_debug" value="debug_roslaunch"/>
   
   <arg name="standalone" default="true" />
-  <arg name="manager" default="$(arg uav_name)_waypointflier_manager" />
+  <arg name="manager" default="$(arg uav_name)_estimator_manager" />
   <arg name="n_threads" default="8" />
   <arg unless="$(arg standalone)" name="nodelet" value="load"/>
   <arg     if="$(arg standalone)" name="nodelet" value="standalone"/>
@@ -29,6 +29,10 @@
       <param name="odom_imu_topic" value="/$(arg uav_name)/odometry/imu_untilted" />
       <param name="velocity_reduced_topic" value="/odometry/velocity_reduced" />
       
+      <param name="range_topic" value="/$(arg uav_name)/garmin/range"/>
+
+      <param name="range2_publish_topic" value="/$(arg uav_name)/garmin/range2"/>  
+
       <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R", "measured_poses_B"] </rosparam>
       <!-- <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R"] </rosparam> -->
       <remap        from="~measured_poses_L" to="/$(arg uav_name)/uvdar/measuredPosesL"/>
