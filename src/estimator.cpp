@@ -1,4 +1,4 @@
-/* Includes //{ */
+/* Includes // */
 #include <ros/ros.h>
 #include <ros/package.h>
 #include <nodelet/nodelet.h>
@@ -34,7 +34,7 @@ namespace mrs_lib
     const int n_inputs = 1;
     const int n_measurements = 1;
     using lkf_t = LKF<n_states, n_inputs, n_measurements>;
-}
+} // namespace mrs_lib
 
 using A_t = mrs_lib::lkf_t::A_t;
 using B_t = mrs_lib::lkf_t::B_t;
@@ -61,9 +61,9 @@ namespace vertical_estimator
          */
         void onInit()
         {
-
             ros::NodeHandle nh_("~");
             // ros::NodeHandle nh_ = nodelet::Nodelet::getMTPrivateNodeHandle();
+            
 
             /* Parameter loader //{ */
             mrs_lib::ParamLoader param_loader(nh_, "VerticalEstimator");
@@ -72,9 +72,9 @@ namespace vertical_estimator
             param_loader.loadParam("UAVs", uavs_ids);
             param_loader.loadParam("velocity_reduced_topic", velocity_reduced_topic);
             param_loader.loadParam("odom_main_topic", odom_main_topic);
-            // param_loader.loadParam("odom_imu_topic", odom_imu_topic);
+            
             param_loader.loadParam("odom_state_topic", odom_state_topic);
-            // param_loader.loadParam("vio_frame", vio_frame); /* using only gps for initial implementation */
+           
             param_loader.loadParam("measured_poses_topics", measured_poses_topics, measured_poses_topics);
 
             estimation_frame = uav_name + "/gps_origin";
@@ -86,28 +86,20 @@ namespace vertical_estimator
             transformer_->setDefaultPrefix(uav_name);
 
             timer_publisher_ = nh_.createTimer(ros::Duration(main_rate), &VerticalEstimator::TimerMain, this, false);
-            // timer_debug_ = nh_.createTimer(ros::Duration(0.1), &VerticalEstimator::TimerDebug, this, false);
-            //}
-
-            /* Services, subscribers and publishers //{ */
-            /* what is the purpose? Visualisation in rviz?? */
-            // pub_debug = nh_.advertise<visualization_msgs::MarkerArray>("debug", 1);
-            // pub_debug_position = nh_.advertise<visualization_msgs::Marker>("debug_position", 1);
+          
             pub_velocity = nh_.advertise<geometry_msgs::Point>("velocity", 1);
 
             pub_velocity_uvdar = nh_.advertise<geometry_msgs::Point>("velocity_uvdar", 1);
-            // pub_velocity_imu = nh_.advertise<geometry_msgs::Point>("velocity_imu", 1);
-            // pub_estimator_output = nh_.advertise<nav_msgs::Odometry>("estimator_output", 1); /*estimator output with position and velocity*/
+            
             pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>("range2", 1);
 
             pub_velocity_uvdar_fcu = nh_.advertise<geometry_msgs::Point>("velocity_uvdar_fcu", 1);
-            // pub_velocity_imu_fcu = nh_.advertise<geometry_msgs::Point>("velocity_imu_fcu", 1);
-            pub_estimator_output_fcu = nh_.advertise<geometry_msgs::Point>("estimator_output_fcu", 1); /*estimator position output publisher*/
+          
+            pub_estimator_output_fcu =
+                nh_.advertise<geometry_msgs::Point>("estimator_output_fcu", 1); /*estimator position output publisher*/
 
-            // sub_main_odom = nh_.subscribe(odom_main_topic, 1, &VerticalEstimator::MainOdom, this);
-            // sub_imu_odom = nh_.subscribe(odom_imu_topic, 1, &VerticalEstimator::ImuOdom, this);
-            // sub_state_odom = nh_.subscribe(odom_state_topic, 1, &VerticalEstimator::StateOdom, this);
-            sub_garmin_range = nh_.subscribe("/garmin/range", 1, &VerticalEstimator::GarminRange, this);
+            
+            sub_garmin_range = nh_.subscribe("range", 1, &VerticalEstimator::GarminRange, this);
 
             //}
 
@@ -172,7 +164,8 @@ namespace vertical_estimator
                 if (agents[i].focal)
                     is_member = true;
 
-                ROS_INFO("[DataCollector]: V_ID: %d, N_ID: %d, U_ID:, %d, name: %s, focal: %d", agents[i].virt_id, agents[i].name_id, agents[i].uv_id, agents[i].uav_name.c_str(), agents[i].focal);
+                ROS_INFO("[DataCollector]: V_ID: %d, N_ID: %d, U_ID:, %d, name: %s, focal: %d", agents[i].virt_id,
+                         agents[i].name_id, agents[i].uv_id, agents[i].uav_name.c_str(), agents[i].focal);
 
                 if (i + 1 >= (int)agents.size())
                     continue;
@@ -197,8 +190,10 @@ namespace vertical_estimator
             /* Cooperative subscribers //{ */
             for (int i = 0; i < (int)agents.size(); ++i)
             {
-                nb_state_callback callback_state = [i, this](const nav_msgs::OdometryConstPtr &stateMessage)
-                { NeighborsStateReduced(stateMessage, i); };
+                nb_state_callback callback_state = [i, this](const geometry_msgs::PointConstPtr &stateMessage)
+                {
+                    NeighborsStateReduced(stateMessage, i);
+                };
                 callbacks_nb_state.push_back(callback_state);
                 sub_nb_state.push_back(nh_.subscribe(odom_main_topics[i], 1, callbacks_nb_state[i]));
             }
@@ -212,7 +207,8 @@ namespace vertical_estimator
             for (auto &topic : measured_poses_topics)
             {
                 ROS_INFO_STREAM("[UVDARKalman]: Subscribing to " << topic);
-                sub_uvdar_measurements.push_back(nh_.subscribe(topic, 3, &VerticalEstimator::callbackUvdarMeasurement, this, ros::TransportHints().tcpNoDelay()));
+                sub_uvdar_measurements.push_back(nh_.subscribe(topic, 3, &VerticalEstimator::callbackUvdarMeasurement, this,
+                                                               ros::TransportHints().tcpNoDelay()));
             }
             //}
 
@@ -248,7 +244,6 @@ namespace vertical_estimator
             //     0, 1, 0, 0, 0, 0;
 
             H << 1, 0, 0;
-                
 
             /* Qq << */
             /*   10.0, 0, 0, 0, 0, 0, */
@@ -281,6 +276,8 @@ namespace vertical_estimator
 
             initialized_ = true;
             ROS_INFO("[VerticalEstimator]: Initialized.");
+
+            ROS_INFO("[VerticalEstimator]: After initialization.");
         }
         //}
 
@@ -300,7 +297,7 @@ namespace vertical_estimator
         {
             if (initialized_)
             {
-                /* ROS_INFO("[VerticalEstimator]: Spinning"); */
+                ROS_INFO("[VerticalEstimator]: Spinning");
 
                 /* getIMUvelocity(); */
 
@@ -316,22 +313,26 @@ namespace vertical_estimator
                     if ((ros::Time::now() - nb.last_meas_u).toSec() > 8.0)
                     {
                         nb.filter_init = false;
-                        ROS_WARN_THROTTLE(0.5, "Agent data not updated for a long time. ID: %d NAME: %s", nb.virt_id, nb.uav_name.c_str());
+                        ROS_WARN_THROTTLE(0.5, "Agent data not updated for a long time. ID: %d NAME: %s", nb.virt_id,
+                                          nb.uav_name.c_str());
                         continue;
                     }
                     if ((ros::Time::now() - nb.last_meas_s).toSec() > 3.0)
                     {
                         nb.filter_init = false;
-                        ROS_WARN_THROTTLE(0.5, "Agent data not updated for a long time. ID: %d NAME: %s", nb.virt_id, nb.uav_name.c_str());
+                        ROS_WARN_THROTTLE(0.5, "Agent data not updated for a long time. ID: %d NAME: %s", nb.virt_id,
+                                          nb.uav_name.c_str());
                         continue;
                     }
-                    /* ROS_INFO("ID: %d,time: %f, bearing: %f", nb.name_id, (ros::Time::now() - nb.last_pfcu).toSec(), nb.pfcu.z); */
+                    /* ROS_INFO("ID: %d,time: %f, bearing: %f", nb.name_id, (ros::Time::now() - nb.last_pfcu).toSec(), nb.pfcu.z);
+                     */
                 }
                 /* ROS_INFO("-------------------"); */
 
                 const u_t u = u_t::Random();
 
-                double new_dt = std::fmax(std::fmin((ros::Time::now() - last_updt_focal).toSec(), (ros::Time::now() - last_meas_focal).toSec()), 0.0);
+                double new_dt = std::fmax(
+                    std::fmin((ros::Time::now() - last_updt_focal).toSec(), (ros::Time::now() - last_meas_focal).toSec()), 0.0);
                 filter->A = A_dt(new_dt);
                 filter_state_focal = filter->predict(filter_state_focal, u, Qq, new_dt);
                 last_updt_focal = ros::Time::now();
@@ -357,11 +358,6 @@ namespace vertical_estimator
                 // est_output.pose.pose.orientation.w = (int)filter_valid;
                 // pub_estimator_output.publish(est_output);
 
-                geometry_msgs::Point vel;
-                vel.x = filter_state_focal.x(2) * cos(-focal_heading) - filter_state_focal.x(3) * sin(-focal_heading);
-                vel.y = filter_state_focal.x(2) * sin(-focal_heading) + filter_state_focal.x(3) * cos(-focal_heading);
-                pub_estimator_output_fcu.publish(vel);
-
                 sensor_msgs::Range vert_est_output;
                 vert_est_output.header.stamp = ros::Time::now();
                 vert_est_output.header.frame_id = estimation_frame;
@@ -369,9 +365,17 @@ namespace vertical_estimator
                 vert_est_output.range = filter_state_focal.x(0);
                 pub_vert_estimator_output.publish(vert_est_output);
 
+                geometry_msgs::Point vel;
+                vel.x = filter_state_focal.x(2) * cos(-focal_heading) - filter_state_focal.x(3) * sin(-focal_heading);
+                vel.y = filter_state_focal.x(2) * sin(-focal_heading) + filter_state_focal.x(3) * cos(-focal_heading);
+                pub_estimator_output_fcu.publish(vel);
+
+                std::string output_frame = estimation_frame;
+
                 // xxx
-                ROS_INFO_THROTTLE(0.25,"This message indicates faulty nature");
-                ROS_INFO_THROTTLE(0.25, "H: %f, H_dt: %f, H_ddt: %f", filter_state_focal.x(0), filter_state_focal.x(1), filter_state_focal.x(2));
+                ROS_INFO_THROTTLE(0.25, "This message indicates non faulty nature");
+                ROS_INFO_THROTTLE(0.25, "H: %f, H_dt: %f, H_ddt: %f", filter_state_focal.x(0), filter_state_focal.x(1),
+                                  filter_state_focal.x(2));
             }
         }
         //}
@@ -399,14 +403,12 @@ namespace vertical_estimator
                 // H << 1, 0, 0, 0, 0, 0,
                 //     0, 1, 0, 0, 0, 0;
                 H << 1, 0, 0;
-                     
             }
             else if (type == 1)
             {
                 // H << 0, 0, 1, 0, 0, 0,
                 //     0, 0, 0, 1, 0, 0;
                 H << 0, 1, 0;
-                     
             }
             // else if (type == 2)
             // {
@@ -441,23 +443,23 @@ namespace vertical_estimator
 
         Eigen::MatrixXd rosCovarianceToEigen2(const boost::array<double, 36> input) /*for 6x6 matrices*/
         {
-            Eigen::MatrixXd output(6, 6);
+            Eigen::MatrixXd output2(6, 6);
 
             for (int i = 0; i < 6; i++)
             {
                 for (int j = 0; j < 6; j++)
                 {
-                    output(j, i) = input[6 * j + i];
+                    output2(j, i) = input[6 * j + i];
                 }
             }
-            return output;
+            return output2;
         }
         //}
 
         /* Cooperative subscribers //{ */
         /* Subscriber of neighbors derivative states //{ */
         // todo do it without communication
-        void NeighborsStateReduced(const nav_msgs::OdometryConstPtr &odom_msg, size_t nb_index)
+        void NeighborsStateReduced(const geometry_msgs::PointConstPtr &odom_msg, size_t nb_index)
         {
             if (virt_id == (int)nb_index)
                 return;
@@ -467,33 +469,35 @@ namespace vertical_estimator
 
             u_t u = u_t::Zero();
 
-            double new_dt = std::fmax(std::fmin(std::fmin((ros::Time::now() - agents[nb_index].last_updt).toSec(), (ros::Time::now() - agents[nb_index].last_meas_u).toSec()), (ros::Time::now() - agents[nb_index].last_meas_s).toSec()), 0.0);
+            double new_dt = std::fmax(std::fmin(std::fmin((ros::Time::now() - agents[nb_index].last_updt).toSec(),
+                                                          (ros::Time::now() - agents[nb_index].last_meas_u).toSec()),
+                                                (ros::Time::now() - agents[nb_index].last_meas_s).toSec()),
+                                      0.0);
             filter->A = A_dt(new_dt);
             agents[nb_index].filter_state = filter->predict(agents[nb_index].filter_state, u, Qq, new_dt);
             agents[nb_index].last_updt = ros::Time::now();
 
-            try
-            {
-                filter->H = H_n(Ve);
-                R_t R;
-                R << Eigen::MatrixXd::Identity(1, 1) * 1;
-                Eigen::VectorXd z(1);
-            
-                z(0) = odom_msg->twist.twist.linear.z;
+            // try
+            // {
+            //     filter->H = H_n(Ve);
+            //     R_t R;
+            //     R = Eigen::MatrixXd::Identity(1, 1);
+            //     Eigen::VectorXd z(1);
 
-                agents[nb_index].filter_state = filter->correct(agents[nb_index].filter_state, z, R);
-                agents[nb_index].last_meas_s = ros::Time::now();
-            }
-            catch ([[maybe_unused]] std::exception e)
-            {
-                ROS_ERROR("LKF failed: %s", e.what());
-            }
+            //     z(0) = odom_msg->twist.twist.linear.z;
+
+            //     agents[nb_index].filter_state = filter->correct(agents[nb_index].filter_state, z, R);
+            //     agents[nb_index].last_meas_s = ros::Time::now();
+            // }
+            // catch ([[maybe_unused]] std::exception e)
+            // {
+            //     ROS_ERROR("LKF failed: %s", e.what());
+            // }
         }
         //}
 
         void callbackUvdarMeasurement(const mrs_msgs::PoseWithCovarianceArrayStamped &msg)
         {
-
             if ((int)(msg.poses.size()) < 1)
                 return;
 
@@ -504,7 +508,8 @@ namespace vertical_estimator
             tf2lf_ = transformer_->getTransform(msg_local.header.frame_id, output_frame, ros::Time(0));
             if (!tf2lf_)
             {
-                ROS_ERROR("[UVDARKalman]: Could not obtain transform from %s to %s", msg_local.header.frame_id.c_str(), output_frame.c_str());
+                ROS_ERROR("[UVDARKalman]: Could not obtain transform from %s to %s", msg_local.header.frame_id.c_str(),
+                          output_frame.c_str());
                 return;
             }
 
@@ -512,7 +517,8 @@ namespace vertical_estimator
             tf2bf_ = transformer_->getTransform(msg_local.header.frame_id, output_frame, ros::Time(0));
             if (!tf2bf_)
             {
-                ROS_ERROR("[UVDARKalman]: Could not obtain transform from %s to %s", msg_local.header.frame_id.c_str(), output_frame.c_str());
+                ROS_ERROR("[UVDARKalman]: Could not obtain transform from %s to %s", msg_local.header.frame_id.c_str(),
+                          output_frame.c_str());
                 return;
             }
 
@@ -525,7 +531,8 @@ namespace vertical_estimator
                 meas_s.pose.covariance = meas.covariance;
                 meas_s.header = msg_local.header;
 
-                if ((int)meas.id < 0 || (int)meas.id >= (int)lut_id.size() || !std::count(uv_ids.begin(), uv_ids.end(), (int)meas.id))
+                if ((int)meas.id < 0 || (int)meas.id >= (int)lut_id.size() ||
+                    !std::count(uv_ids.begin(), uv_ids.end(), (int)meas.id))
                 {
                     ROS_ERROR("Wrong UVDAR ID %d", (int)meas.id);
                     continue;
@@ -538,10 +545,11 @@ namespace vertical_estimator
                 {
                     Eigen::MatrixXd poseCovB(6, 6);
                     poseCovB = rosCovarianceToEigen2(res_b_.value().pose.covariance);
-                    Eigen::EigenSolver<Eigen::Matrix3d> es(poseCovB.topLeftCorner(3, 3));
+                    Eigen::EigenSolver<Eigen::MatrixXd> es(poseCovB.topLeftCorner(3, 3));
                     auto eigvals_b = es.eigenvalues();
 
-                    /* if(agents[aid].filter_init && eigvals_b(0).real() < 500 && eigvals_b(1).real() < 500 && eigvals_b(2).real() < 500){ */
+                    /* if(agents[aid].filter_init && eigvals_b(0).real() < 500 && eigvals_b(1).real() < 500 && eigvals_b(2).real() <
+                     * 500){ */
                     if (agents[aid].filter_init)
                     {
                         agents[aid].eigens.x = eigvals_b(0).real();
@@ -572,7 +580,7 @@ namespace vertical_estimator
                                 }
                                 else
                                 {
-                                    gap = abs(nb_hdg - atan2(agents[aid].pfcu.y, agents[aid].pfcu.x));
+                                    gap = abs(atan2(agents[aid].pfcu.y, agents[aid].pfcu.x) - nb_hdg);
                                 }
 
                                 if (gap > M_PI)
@@ -596,7 +604,7 @@ namespace vertical_estimator
                                     geometry_msgs::Point C;
                                     C.x = agents[aid].pfcu.x;
                                     C.y = agents[aid].pfcu.y;
-                                    C.z = agents[aid].pfcu.z;
+                                    C.z = agents[aid].pfcu.z; /*need to calculate actual value*/
                                     geometry_msgs::Point D;
                                     D.x = C.x + cos((atan2(agents[aid].pfcu.y, agents[aid].pfcu.x) + focal_heading));
                                     D.y = C.y + sin((atan2(agents[aid].pfcu.y, agents[aid].pfcu.x) + focal_heading));
@@ -631,20 +639,28 @@ namespace vertical_estimator
                                         new_int.z = detz / det;
                                     }
 
-                                    double gt_dist = sqrt(pow(focal_position.x - new_int.x, 2) + pow(focal_position.y - new_int.y, 2) + pow(focal_position.z - new_int.z, 2));
+                                    double gt_dist = sqrt(pow(focal_position.x - new_int.x, 2) + pow(focal_position.y - new_int.y, 2) +
+                                                          pow(focal_position.z - new_int.z, 2));
                                     if (abs(det) > 0.0001 && gt_dist < 5.0)
                                     {
+                                        ROS_INFO(
+                                            "D: %f, h_diff: %f, gap: %f, det: %f, nb_dt: %f, eb1: %f, eb2: %f, eb3: %f, ea1: %f, ea2: %f, "
+                                            "ea3: %f",
+                                            gt_dist, hdg_diff, gap, det, nb_dt, nb.eigens.x, nb.eigens.y, nb.eigens.z, agents[aid].eigens.x,
+                                            agents[aid].eigens.y, agents[aid].eigens.z);
 
                                         if (!filter_init_focal)
                                         {
                                             Eigen::VectorXd poseVec(3);
-                                            poseVec(0) = new_int.z; /*important part to figure out. Intersection of all poses to find actual coordinates*/
-                                            poseVec(1) = 0;
-                                            poseVec(2) = 0;
+                                            poseVec(0) = new_int.x; /*important part to figure out. Intersection of all poses to find actual
+                                                                       coordinates*/
+                                            poseVec(1) = new_int.y;
+                                            poseVec(2) = new_int.z;
                                             Eigen::MatrixXd poseCov(3, 3);
                                             poseCov << Eigen::MatrixXd::Identity(3, 3);
 
-                                            ROS_INFO("LKF initialized for the focal UAV at %f, %f of GPS frame.", poseVec(0), poseVec(1));
+                                            ROS_INFO("LKF initialized for the focal UAV at %f, %f, %f of GPS frame.", poseVec(0), poseVec(1),
+                                                     poseVec(2));
 
                                             last_meas_focal = ros::Time::now();
                                             last_meas_focal_main = ros::Time::now();
@@ -659,10 +675,10 @@ namespace vertical_estimator
                                                 filter->H = H_n(Po);
 
                                                 R_t R;
-                                                R << Eigen::MatrixXd::Identity(1, 1) * 0.1;
+                                                R = Eigen::MatrixXd::Identity(1, 1) * 0.1;
                                                 Eigen::VectorXd z(2);
                                                 z(0) = new_int.z; /* need intersection point of all poses*/
-                                                
+
                                                 filter_state_focal = filter->correct(filter_state_focal, z, R);
                                                 last_meas_focal_main = ros::Time::now();
                                             }
@@ -675,7 +691,8 @@ namespace vertical_estimator
                                 }
                                 else
                                 {
-                                    ROS_WARN_THROTTLE(1.0, "UAV%d, and UAV%d could have singular solution with bearing gap %f", nb.name_id, agents[aid].name_id, gap);
+                                    ROS_WARN_THROTTLE(1.0, "UAV%d, and UAV%d could have singular solution with bearing gap %f", nb.name_id,
+                                                      agents[aid].name_id, gap);
                                     continue;
                                 }
                             }
@@ -683,22 +700,21 @@ namespace vertical_estimator
                     }
                     else
                     {
-                        ROS_WARN("[StateEstimator]: Filter of uav%d not initialized.", agents[aid].name_id);
+                        ROS_WARN("[VertcialEstimator]: Filter of uav%d not initialized.", agents[aid].name_id);
                     }
                 }
                 else
                 {
-                    ROS_INFO_STREAM("[StateEstimator]: Failed to get transformation for tf2bf measurement, returning.");
+                    ROS_INFO_STREAM("[VerticalEstimator]: Failed to get transformation for tf2bf measurement, returning.");
                     /* return; */
                 }
 
                 if (res_l_)
-                {   
-                    Eigen::MatrixXd poseCov(6,6);
+                {
+                    Eigen::MatrixXd poseCov(6, 6);
                     poseCov = rosCovarianceToEigen2(res_l_.value().pose.covariance);
-                    Eigen::EigenSolver<Eigen::Matrix3d> es(poseCov.topLeftCorner(3,3));
+                    Eigen::EigenSolver<Eigen::Matrix3d> es(poseCov.topLeftCorner(3, 3));
                     auto eigvals = es.eigenvalues();
-
 
                     if (!agents[aid].filter_init)
                     {
@@ -709,7 +725,8 @@ namespace vertical_estimator
                         Eigen::MatrixXd poseCov(3, 3);
                         poseCov << Eigen::MatrixXd::Identity(3, 3);
 
-                        ROS_INFO("LKF initialized for UAV%d with UVDAR reloc at %f, %f of gps frame.", agents[aid].name_id, poseVec(0), poseVec(1));
+                        ROS_INFO("LKF initialized for UAV%d with UVDAR reloc at %f, %f of gps frame.", agents[aid].name_id,
+                                 poseVec(0), poseVec(1));
 
                         agents[aid].last_meas_u = ros::Time::now();
                         agents[aid].last_meas_s = ros::Time::now();
@@ -718,8 +735,9 @@ namespace vertical_estimator
                         agents[aid].filter_init = true;
                     }
                     else
-                    {   
-                        if (eigvals(0).real() < 500 && eigvals(1).real() < 500 && eigvals(2).real() < 500 && (ros::Time::now() - agents[aid].last_meas_u).toSec() >= 4.0)
+                    {
+                        if (eigvals(0).real() < 500 && eigvals(1).real() < 500 && eigvals(2).real() < 500 &&
+                            (ros::Time::now() - agents[aid].last_meas_u).toSec() >= 4.0)
                         {
                             try
                             {
@@ -741,7 +759,7 @@ namespace vertical_estimator
                         }
                         else
                         {
-                            ROS_INFO_STREAM("[StateEstimator]: Failed to get transformation for tf2lf measurement, returning.");
+                            ROS_INFO_STREAM("[VerticalEstimator]: Failed to get transformation for tf2lf measurement, returning.");
                         }
                     }
                 }
@@ -753,22 +771,21 @@ namespace vertical_estimator
             // sensor_msgs::Range rmsg = rangemsg;
             // rmsg.range = rangemsg.range;
 
-            try {
+            try
+            {
                 filter->H = H_n(Po);
                 R_t R;
-                R << Eigen::MatrixXd::Identity(1,1) * 1;
+                R << Eigen::MatrixXd::Identity(1, 1) * 1;
                 Eigen::VectorXd z(1);
                 z(0) = rangemsg.range;
-            
-                filter_state_focal = filter->correct(filter_state_focal,z,R);
+
+                filter_state_focal = filter->correct(filter_state_focal, z, R);
                 last_meas_focal = ros::Time::now();
             }
-            catch([[maybe_unused]] std::exception e) {
+            catch ([[maybe_unused]] std::exception e)
+            {
                 ROS_ERROR("LKF failed: %s", e.what());
             }
-
-            
-
         }
         //}
         //}
@@ -814,7 +831,7 @@ namespace vertical_estimator
 
         std::vector<std::string> measured_poses_topics;
 
-        using nb_state_callback = boost::function<void(const nav_msgs::OdometryConstPtr &)>;
+        using nb_state_callback = boost::function<void(const geometry_msgs::PointConstPtr &)>;
         std::vector<nb_state_callback> callbacks_nb_state;
         std::vector<ros::Subscriber> sub_nb_state;
 
@@ -842,7 +859,7 @@ namespace vertical_estimator
         std::vector<int> lut_id;
         std::vector<int> uv_ids;
 
-        bool vio_frame = true;
+        bool vio_frame = false;
 
         double focal_heading = 0;
         double focal_height = 0;
@@ -904,6 +921,9 @@ namespace vertical_estimator
         };
 
         std::vector<Neighbor> agents;
+
+        // Eigen::MatrixXd output(3,3);
+        
 
         //}
         //}

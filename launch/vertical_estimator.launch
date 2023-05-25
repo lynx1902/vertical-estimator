@@ -30,6 +30,7 @@
       <param name="velocity_reduced_topic" value="/odometry/velocity_reduced" />
       
       <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R", "measured_poses_B"] </rosparam>
+      <!-- <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R"] </rosparam> -->
       <remap        from="~measured_poses_L" to="/$(arg uav_name)/uvdar/measuredPosesL"/>
       <remap        from="~measured_poses_R" to="/$(arg uav_name)/uvdar/measuredPosesR"/>
       <remap        from="~measured_poses_B" to="/$(arg uav_name)/uvdar/measuredPosesB"/>

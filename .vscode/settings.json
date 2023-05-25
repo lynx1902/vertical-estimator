@@ -1,3 +1,15 @@
 {
-    "cmake.configureOnOpen": true
+    "cmake.configureOnOpen": true,
+    "python.autoComplete.extraPaths": [
+        "/home/lynx/user_ros_workspace/devel/lib/python3/dist-packages",
+        "/opt/mrs/modules_workspace/install/lib/python3/dist-packages",
+        "/opt/mrs/mrs_workspace/install/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/lynx/user_ros_workspace/devel/lib/python3/dist-packages",
+        "/opt/mrs/modules_workspace/install/lib/python3/dist-packages",
+        "/opt/mrs/mrs_workspace/install/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ]
 }

@@ -30,7 +30,7 @@ find_package(catkin REQUIRED COMPONENTS
   mavros_msgs
 
 )
-# find_package(Eigen3 REQUIRED HINTS /usr/local/lib)
+find_package(Eigen3 REQUIRED HINTS /usr/include/)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -87,12 +87,12 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  geometry_msgs   
-  mrs_msgs   
-  std_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   geometry_msgs   
+#   mrs_msgs   
+#   std_msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
