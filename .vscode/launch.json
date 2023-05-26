@@ -8,7 +8,7 @@
             "name": "ROS: Launch",
             "type": "ros",
             "request": "launch",
-            "target": "absolute path to launch file"
+            "target": "/home/lynx/user_ros_workspace/src/my_code/launch/vertical_estimator.launch"
         }
 
     ]
