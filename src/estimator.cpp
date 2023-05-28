@@ -188,7 +188,7 @@ namespace vertical_estimator
 
             for (int i = 0; i < (int)agents.size(); ++i)
             {
-                std::string topics = "/" + agents[i].uav_name + "/odometry/odom_main";
+                std::string topics = "/" + agents[i].uav_name + odom_main_topic;
                 odom_main_topics.push_back(topics);
             }
 
@@ -323,6 +323,10 @@ namespace vertical_estimator
                     std::fmin((ros::Time::now() - last_updt_focal).toSec(), (ros::Time::now() - last_meas_focal).toSec()), 0.0);
                 filter->A = A_dt(new_dt);
                 filter_state_focal = filter->predict(filter_state_focal, u, Qq, new_dt);
+                if (std::isnan(filter_state_focal.x(0)))
+                {
+                    ROS_ERROR("Filter error on line 328");
+                }
                 last_updt_focal = ros::Time::now();
 
                 if ((ros::Time::now() - last_meas_focal_main).toSec() < 10.0)
@@ -337,6 +341,10 @@ namespace vertical_estimator
                 sensor_msgs::Range vert_est_output;
                 vert_est_output.header.stamp = ros::Time::now();
                 vert_est_output.header.frame_id = estimation_frame;
+                vert_est_output.radiation_type = vert_est_output.ULTRASOUND;
+                vert_est_output.min_range = 0.0;
+                vert_est_output.max_range = 20.0;
+                vert_est_output.field_of_view = M_PI;
 
                 vert_est_output.range = filter_state_focal.x(0);
                 pub_vert_estimator_output.publish(vert_est_output);
@@ -440,6 +448,10 @@ namespace vertical_estimator
                                       0.0);
             filter->A = A_dt(new_dt);
             agents[nb_index].filter_state = filter->predict(agents[nb_index].filter_state, u, Qq, new_dt);
+            if (std::isnan(filter_state_focal.x(0)))
+            {
+                ROS_ERROR("Filter error on line 453");
+            }
             agents[nb_index].last_updt = ros::Time::now();
 
             try
@@ -452,6 +464,9 @@ namespace vertical_estimator
                 z(0) = odom_msg->twist.twist.linear.z;
 
                 agents[nb_index].filter_state = filter->correct(agents[nb_index].filter_state, z, R);
+                if(std::isnan(filter_state_focal.x(0))){
+                    ROS_ERROR("Filter error on line 468");
+                }
                 agents[nb_index].last_meas_s = ros::Time::now();
             }
             catch ([[maybe_unused]] std::exception e)
@@ -621,10 +636,10 @@ namespace vertical_estimator
                                         if (!filter_init_focal)
                                         {
                                             Eigen::VectorXd poseVec(3);
-                                            poseVec(0) = new_int.x; /*important part to figure out. Intersection of all poses to find actual
+                                            poseVec(0) = new_int.z; /*important part to figure out. Intersection of all poses to find actual
                                                                        coordinates*/
-                                            poseVec(1) = new_int.y;
-                                            poseVec(2) = new_int.z;
+                                            poseVec(1) = 0;
+                                            poseVec(2) = 0;
                                             Eigen::MatrixXd poseCov(3, 3);
                                             poseCov << Eigen::MatrixXd::Identity(3, 3);
 
@@ -649,6 +664,10 @@ namespace vertical_estimator
                                                 z(0) = new_int.z; /* need intersection point of all poses*/
 
                                                 filter_state_focal = filter->correct(filter_state_focal, z, R);
+                                                if (std::isnan(filter_state_focal.x(0)))
+                                                {
+                                                    ROS_ERROR("Filter error on line 666");
+                                                }
                                                 last_meas_focal_main = ros::Time::now();
                                             }
                                             catch ([[maybe_unused]] std::exception e)
@@ -694,8 +713,8 @@ namespace vertical_estimator
                         Eigen::MatrixXd poseCov(3, 3);
                         poseCov << Eigen::MatrixXd::Identity(3, 3);
 
-                        ROS_INFO("LKF initialized for UAV%d with UVDAR reloc at %f, %f of gps frame.", agents[aid].name_id,
-                                 poseVec(0), poseVec(1));
+                        ROS_INFO("LKF initialized for UAV%d with UVDAR reloc at %f, %f, %f of gps frame.", agents[aid].name_id,
+                                 poseVec(0), poseVec(1), poseVec(2));
 
                         agents[aid].last_meas_u = ros::Time::now();
                         agents[aid].last_meas_s = ros::Time::now();
@@ -713,10 +732,14 @@ namespace vertical_estimator
                                 filter->H = H_n(Po);
 
                                 R_t R;
-                                R << Eigen::MatrixXd::Identity(1, 1) * 0.00001;
+                                R = Eigen::MatrixXd::Identity(1, 1) * 0.00001;
                                 Eigen::VectorXd z(1);
                                 z(0) = res_l_.value().pose.pose.position.z;
                                 agents[aid].filter_state = filter->correct(agents[aid].filter_state, z, R);
+                                if (std::isnan(filter_state_focal.x(0)))
+                                {
+                                    ROS_ERROR("Filter error on line 738");
+                                }
                                 agents[aid].last_meas_u = ros::Time::now();
 
                                 ROS_WARN("Agent state updated uav%d", agents[aid].name_id);
@@ -752,24 +775,7 @@ namespace vertical_estimator
                         double u_dt = (past_u_pos.back().t - past_u_pos[(int)past_u_pos.size() - 2 - k].t).toSec();
                         if (u_dt > 0.0)
                         {
-                            // double dx = (past_u_pos.back().pose.x - past_u_pos[(int)past_u_pos.size() - 2 - k].pose.x) / u_dt;
-                            // if(abs(dx) > 8.0)
-                            // {
-                            //     u_vel.x = 8.0;
-                            // }
-                            // else
-                            // {
-                            //     u_vel.x += dx;
-                            // }
-                            // double dy = (past_u_pos.back().pose.y - past_u_pos[(int)past_u_pos.size() - 2 -k].pose.y) /u_dt;
-                            // if(abs(dy) > 8.0)
-                            // {
-                            //     u_vel.y = 8.0;
-                            // }
-                            // else
-                            // {
-                            //     u_vel.y += dy;
-                            // }
+
                             double dz = (past_u_pos.back().pose.z - past_u_pos[(int)past_u_pos.size() - 2 - k].pose.z) / u_dt;
                             if (abs(dz) > 8.0)
                             {
@@ -791,10 +797,14 @@ namespace vertical_estimator
                             filter->H = H_n(Ve);
 
                             R_t R;
-                            R << Eigen::MatrixXd::Identity(1, 1) * 3.0;
+                            R = Eigen::MatrixXd::Identity(1, 1) * 3.0;
                             Eigen::VectorXd z(1);
                             z(0) = u_vel.z;
                             filter_state_focal = filter->correct(filter_state_focal, z, R);
+                            if (std::isnan(filter_state_focal.x(0)))
+                            {
+                                ROS_ERROR("Filter error on line 803");
+                            }
                             last_meas_focal = ros::Time::now();
                         }
                         catch ([[maybe_unused]] std::exception e)
@@ -819,11 +829,14 @@ namespace vertical_estimator
             {
                 filter->H = H_n(Po);
                 R_t R;
-                R << Eigen::MatrixXd::Identity(1, 1) * 1;
+                R = Eigen::MatrixXd::Identity(1, 1) * 1;
                 Eigen::VectorXd z(1);
                 z(0) = rangemsg.range;
 
                 filter_state_focal = filter->correct(filter_state_focal, z, R);
+                if(std::isnan(filter_state_focal.x(0))){
+                    ROS_ERROR("Filter error on line 835");
+                }
                 last_meas_focal = ros::Time::now();
             }
             catch ([[maybe_unused]] std::exception e)

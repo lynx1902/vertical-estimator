@@ -128,5 +128,11 @@ windows:
   #     layout: tiled
   #     panes:
   #       - waitForSimulation; waitForRos; sleep 5; rosrun rqt_graph rqt_graph
-  - gdb:
-      
+  - echo-debug:
+      layout: tiled
+      panes:
+        - waitForOdometry; sleep 2; rostopic echo /uav29/garmin/range
+        - waitForOdometry; sleep 2; rostopic echo /uav30/garmin/range
+        - waitForOdometry; sleep 2; rostopic echo /uav38/garmin/range
+        - waitForOdometry; sleep 2; rostopic echo /uav39/garmin/range
+    

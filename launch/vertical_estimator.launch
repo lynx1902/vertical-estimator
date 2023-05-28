@@ -25,7 +25,7 @@
       
       <param name="odom_state_topic" value="/$(arg uav_name)/odometry/uav_state" />
     
-      <param name="odom_main_topic" value="/$(arg uav_name)/odometry/odom_main" />
+      <param name="odom_main_topic" value="/odometry/odom_main" />
       <param name="odom_imu_topic" value="/$(arg uav_name)/odometry/imu_untilted" />
       <param name="velocity_reduced_topic" value="/odometry/velocity_reduced" />
       
