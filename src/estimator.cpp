@@ -251,9 +251,9 @@ namespace vertical_estimator
             //     0, 0, 0, 0, 1.0, 0,
             //     0, 0, 0, 0, 0, 1.0;
 
-            Qq << 1.0, 0, 0,
+            Qq << 10.0, 0, 0,
                 0, 1.0, 0,
-                0, 0, 1.0;
+                0, 0, 0.1;
 
             /* what is std::make_unique*/
             filter = std::make_unique<mrs_lib::lkf_t>(A, B, H);
@@ -323,7 +323,10 @@ namespace vertical_estimator
                 double new_dt = std::fmax(
                     std::fmin((ros::Time::now() - last_updt_focal).toSec(), (ros::Time::now() - last_meas_focal).toSec()), 0.0);
                 filter->A = A_dt(new_dt);
+                ROS_INFO("A new_dt %f",A(1,2));
+                ROS_INFO("u %f",u(0));
                 filter_state_focal = filter->predict(filter_state_focal, u, Qq, new_dt);
+
                 if (std::isnan(filter_state_focal.x(0)))
                 {
                     ROS_ERROR("Filter error on line 328");
@@ -458,7 +461,7 @@ namespace vertical_estimator
             {
                 filter->H = H_n(Ve);
                 R_t R;
-                R = Eigen::MatrixXd::Identity(1, 1);
+                R = Eigen::MatrixXd::Identity(1, 1) * 0.1;
                 Eigen::VectorXd z(1);
 
                 z(0) = odom_msg->twist.twist.linear.z;
@@ -605,7 +608,7 @@ namespace vertical_estimator
 
                                     geometry_msgs::Point new_int;
 
-                                    if (abs(det) < 0.001)
+                                    if (abs(det) < 0.0001)
                                     {
                                         ROS_ERROR("Intersection not found, det: %f", det);
                                     }
@@ -789,7 +792,7 @@ namespace vertical_estimator
                             }
                         }
                     }
-                    u_vel.z = u_vel.z / 10;
+                    u_vel.z = u_vel.z / 10.0;
                     ROS_WARN("Velocity z: %f", u_vel.z);
 
                     if (filter_init_focal)
@@ -799,7 +802,7 @@ namespace vertical_estimator
                             filter->H = H_n(Ve);
 
                             R_t R;
-                            R = Eigen::MatrixXd::Identity(1, 1) * 3.0;
+                            R = Eigen::MatrixXd::Identity(1, 1) * 0.3;
                             Eigen::VectorXd z(1);
                             z(0) = u_vel.z;
                             filter_state_focal = filter->correct(filter_state_focal, z, R);
@@ -844,7 +847,7 @@ namespace vertical_estimator
 
                         R_t R;
 
-                        R = Eigen::MatrixXd::Identity(1,1) * 1.0;
+                        R = Eigen::MatrixXd::Identity(1,1) * 0.5;
                         Eigen::VectorXd z(1);
                         z(0) = velocity_imu_focal.z;
                         filter_state_focal = filter->correct(filter_state_focal, z, R);
@@ -867,7 +870,7 @@ namespace vertical_estimator
                             filter->H = H_n(Ac);
 
                             R_t R;
-                            R = Eigen::MatrixXd::Identity(1,1) * 1.0;
+                            R = Eigen::MatrixXd::Identity(1,1) * 0.8;
                             Eigen::VectorXd z(1);
                             z(0) = az;
                             filter_state_focal = filter->correct(filter_state_focal, z, R);
@@ -908,10 +911,10 @@ namespace vertical_estimator
             {
                 filter->H = H_n(Po);
                 R_t R;
-                R = Eigen::MatrixXd::Identity(1, 1) * 1;
+                R = Eigen::MatrixXd::Identity(1, 1) * 0.1;
                 Eigen::VectorXd z(1);
                 z(0) = rangemsg.range;
-
+                ROS_INFO("Range_msg %f",z(0));
                 filter_state_focal = filter->correct(filter_state_focal, z, R);
                 if (std::isnan(filter_state_focal.x(0)))
                 {

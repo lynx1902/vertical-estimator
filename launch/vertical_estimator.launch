@@ -1,7 +1,7 @@
 <launch>
   <arg name="uav_name" default="$(optenv UAV_NAME uav1)"/>
   
-  <arg name="DEBUG" default="false" />
+  <arg name="DEBUG" default="true" />
   <arg unless="$(arg DEBUG)" name="launch_prefix_debug" value=""/>
   <arg     if="$(arg DEBUG)" name="launch_prefix_debug" value="debug_roslaunch"/>
   
