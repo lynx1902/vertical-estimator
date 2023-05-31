@@ -21,7 +21,7 @@
 
 #include <sensor_msgs/Range.h>
 
-#define Q_c 6.35
+
 
 /* Filter preliminary //{ */
 #define Po 0 // position
@@ -98,6 +98,8 @@ namespace vertical_estimator
             pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>(range2_publish_topic, 1); /*vert estimator*/
 
             pub_velocity_uvdar_fcu = nh_.advertise<geometry_msgs::Point>("velocity_uvdar_fcu", 1);
+
+            pub_vert_estimator_output_fcu = nh_.advertise<geometry_msgs::Point>("vert_estimator_output_fcu",1);
 
             sub_garmin_range = nh_.subscribe(range_topic, 1, &VerticalEstimator::GarminRange, this);
             sub_main_odom = nh_.subscribe(odom_main_topic, 1, &VerticalEstimator::MainOdom, this );
@@ -251,9 +253,9 @@ namespace vertical_estimator
             //     0, 0, 0, 0, 1.0, 0,
             //     0, 0, 0, 0, 0, 1.0;
 
-            Qq << 10.0, 0, 0,
+            Qq << 1.0, 0, 0,
                 0, 1.0, 0,
-                0, 0, 0.1;
+                0, 0, 1.0;
 
             /* what is std::make_unique*/
             filter = std::make_unique<mrs_lib::lkf_t>(A, B, H);
@@ -323,8 +325,7 @@ namespace vertical_estimator
                 double new_dt = std::fmax(
                     std::fmin((ros::Time::now() - last_updt_focal).toSec(), (ros::Time::now() - last_meas_focal).toSec()), 0.0);
                 filter->A = A_dt(new_dt);
-                ROS_INFO("A new_dt %f",A(1,2));
-                ROS_INFO("u %f",u(0));
+                
                 filter_state_focal = filter->predict(filter_state_focal, u, Qq, new_dt);
 
                 if (std::isnan(filter_state_focal.x(0)))
@@ -345,13 +346,17 @@ namespace vertical_estimator
                 sensor_msgs::Range vert_est_output;
                 vert_est_output.header.stamp = ros::Time::now();
                 vert_est_output.header.frame_id = estimation_frame;
-                vert_est_output.radiation_type = vert_est_output.ULTRASOUND;
+                vert_est_output.radiation_type = vert_est_output.INFRARED;
                 vert_est_output.min_range = 0.0;
-                vert_est_output.max_range = 25.0;
+                vert_est_output.max_range = 20.0;
                 vert_est_output.field_of_view = M_PI;
 
                 vert_est_output.range = filter_state_focal.x(0);
                 pub_vert_estimator_output.publish(vert_est_output);
+
+                geometry_msgs::Point velo;
+                velo.z = filter_state_focal.x(1);
+                pub_vert_estimator_output_fcu.publish(velo);
 
                 std::string output_frame = estimation_frame;
 
@@ -904,8 +909,19 @@ namespace vertical_estimator
         void
         GarminRange(const sensor_msgs::Range &rangemsg)
         {
-            // sensor_msgs::Range rmsg = rangemsg;
-            // rmsg.range = rangemsg.range;
+            sensor_msgs::Range rmsg = rangemsg;
+            rangemsg_vector.push_back(rangemsg);
+            if(rmsg.range == -INFINITY || rmsg.range == INFINITY){
+                ROS_ERROR("!!!!One outlier inf detected!!!!!");
+                std::vector<sensor_msgs::Range>::iterator itr = rangemsg_vector.end() - 2;
+                if((*itr).range == -INFINITY || (*itr).range == INFINITY){
+                    ROS_ERROR("Two consecutive inf values");
+                }
+                else {
+                    rmsg.range = (*itr).range;
+                }
+            }
+
 
             try
             {
@@ -913,8 +929,7 @@ namespace vertical_estimator
                 R_t R;
                 R = Eigen::MatrixXd::Identity(1, 1) * 0.1;
                 Eigen::VectorXd z(1);
-                z(0) = rangemsg.range;
-                ROS_INFO("Range_msg %f",z(0));
+                z(0) = rmsg.range;
                 filter_state_focal = filter->correct(filter_state_focal, z, R);
                 if (std::isnan(filter_state_focal.x(0)))
                 {
@@ -950,7 +965,7 @@ namespace vertical_estimator
 
         ros::Publisher pub_velocity_imu_fcu;
         ros::Publisher pub_velocity_uvdar_fcu;
-        ros::Publisher pub_estimator_output_fcu;
+        ros::Publisher pub_vert_estimator_output_fcu;
 
         ros::Publisher pub_vert_estimator_output;
 
@@ -1071,8 +1086,10 @@ namespace vertical_estimator
         struct Intersection
         {
             geometry_msgs::Point ints;
-            int ints_count;
+            int ints_count = 0;
         };
+
+        std::vector<sensor_msgs::Range> rangemsg_vector;
 
         // Eigen::MatrixXd output(3,3);
 
