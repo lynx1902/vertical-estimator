@@ -149,12 +149,12 @@ windows:
         - history -s rosservice call /$UAV_NAME/waypoint_flier/start_waypoints_following
         - history -s rosservice call /$UAV_NAME/waypoint_flier/stop_waypoints_following
 
-  - plotting:
-      layout: tiled
-      panes:
-        - waitForOdometry; rosrun rqt_plot rqt_plot -t /uav29/garmin/range/range,/uav29/garmin/range2/range
+  # - plotting:
+  #     layout: tiled
+  #     panes:
+  #       - waitForOdometry; rosrun plotjuggler plotjuggler
 
   - recording:
       layout: tiled
       panes:
-        - waitForOdometry; rosbag record -O uav29.bag /uav29/garmin/range2 /uav29/garmin/range     
+        - waitForOdometry; rosbag record -O uav29_no_rangefinder.bag /uav29/garmin/range2 /uav29/ground_truth /uav29/garmin/range   

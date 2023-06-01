@@ -120,8 +120,13 @@ namespace vertical_estimator
 
                 new_nb.filter_init = false;
 
-                std::string new_topic_state = "/" + new_nb.uav_name + velocity_reduced_topic;
-                velocity_reduced_topics.push_back(new_topic_state);
+                // std::string new_topic_state = "/" + new_nb.uav_name + velocity_reduced_topic;
+                // velocity_reduced_topics.push_back(new_topic_state);
+
+                std::string odom_topics = "/" + new_nb.uav_name + odom_main_topic;
+                std::cout << odom_topics<< std::endl;
+                odom_main_topics.push_back(odom_topics);
+                
 
                 if (lut_id.empty())
                 {
@@ -191,11 +196,11 @@ namespace vertical_estimator
             }
             //}
 
-            for (int i = 0; i < (int)agents.size(); ++i)
-            {
-                std::string odom_topics = "/" + agents[i].uav_name + odom_main_topic;
-                odom_main_topics.push_back(odom_topics);
-            }
+            // for (int i = 0; i < (int)agents.size(); ++i)
+            // {
+            //     std::string odom_topics = "/" + agents[i].uav_name + odom_main_topic;
+            //     odom_main_topics.push_back(odom_topics);
+            // }
 
             /* Cooperative subscribers //{ */
             for (int i = 0; i < (int)agents.size(); ++i)
@@ -346,7 +351,7 @@ namespace vertical_estimator
                 sensor_msgs::Range vert_est_output;
                 vert_est_output.header.stamp = ros::Time::now();
                 vert_est_output.header.frame_id = estimation_frame;
-                vert_est_output.radiation_type = vert_est_output.INFRARED;
+                vert_est_output.radiation_type = vert_est_output.ULTRASOUND;
                 vert_est_output.min_range = 0.0;
                 vert_est_output.max_range = 20.0;
                 vert_est_output.field_of_view = M_PI;
@@ -361,7 +366,7 @@ namespace vertical_estimator
                 std::string output_frame = estimation_frame;
 
                 // xxx
-
+                // ROS_INFO_THROTTLE(0.25,"Z UVDAR: %f",new_int.z);
                 ROS_INFO_THROTTLE(0.25, "H: %f, H_dt: %f, H_ddt: %f", filter_state_focal.x(0), filter_state_focal.x(1),
                                   filter_state_focal.x(2));
             }
@@ -482,6 +487,28 @@ namespace vertical_estimator
             {
                 ROS_ERROR("LKF failed: %s", e.what());
             }
+
+            // try {
+            //     filter->H = H_n(Po);
+            //     R_t R;
+            //     R = Eigen::MatrixXd::Identity(1,1) * 1;
+            //     Eigen::VectorXd z(1);
+
+            //     z(0) = odom_msg->pose.pose.position.z;
+
+            //     agents[nb_index].filter_state = filter->correct(agents[nb_index].filter_state, z, R);
+            //     if (std::isnan(filter_state_focal.x(0)))
+            //     {
+            //         ROS_ERROR("Filter error on ine 496");
+                    
+            //     }
+            //     agents[nb_index].last_meas_s = ros::Time::now();
+            // }
+            // catch ([[maybe_unused]] std::exception e) {
+            //     ROS_ERROR("LKF failed: %s", e.what());
+            // }
+
+
         }
         // //}
 
@@ -611,7 +638,7 @@ namespace vertical_estimator
 
                                     double det = a1 * (b2 * c1 - b1 * c2) - a2 * (b1 * c1 - b2 * c1) + b1 * (a2 * c2 - a1 * c2);
 
-                                    geometry_msgs::Point new_int;
+                                    // geometry_msgs::Point new_int;
 
                                     if (abs(det) < 0.0001)
                                     {
@@ -642,6 +669,7 @@ namespace vertical_estimator
                                         sum_of_ints.ints.y += new_int.y;
                                         sum_of_ints.ints.z += new_int.z; /*calculate this correctly, not sure about current implementation*/
                                         sum_of_ints.ints_count += 1;
+                                        
 
                                         if (!filter_init_focal)
                                         {
@@ -807,7 +835,7 @@ namespace vertical_estimator
                             filter->H = H_n(Ve);
 
                             R_t R;
-                            R = Eigen::MatrixXd::Identity(1, 1) * 0.3;
+                            R = Eigen::MatrixXd::Identity(1, 1) * 3.0;
                             Eigen::VectorXd z(1);
                             z(0) = u_vel.z;
                             filter_state_focal = filter->correct(filter_state_focal, z, R);
@@ -852,7 +880,7 @@ namespace vertical_estimator
 
                         R_t R;
 
-                        R = Eigen::MatrixXd::Identity(1,1) * 0.5;
+                        R = Eigen::MatrixXd::Identity(1,1) * 1.0;
                         Eigen::VectorXd z(1);
                         z(0) = velocity_imu_focal.z;
                         filter_state_focal = filter->correct(filter_state_focal, z, R);
@@ -875,7 +903,7 @@ namespace vertical_estimator
                             filter->H = H_n(Ac);
 
                             R_t R;
-                            R = Eigen::MatrixXd::Identity(1,1) * 0.8;
+                            R = Eigen::MatrixXd::Identity(1,1) * 1.0;
                             Eigen::VectorXd z(1);
                             z(0) = az;
                             filter_state_focal = filter->correct(filter_state_focal, z, R);
@@ -908,7 +936,7 @@ namespace vertical_estimator
 
         void
         GarminRange(const sensor_msgs::Range &rangemsg)
-        {
+        {   
             sensor_msgs::Range rmsg = rangemsg;
             rangemsg_vector.push_back(rangemsg);
             if(rmsg.range == -INFINITY || rmsg.range == INFINITY){
@@ -921,6 +949,7 @@ namespace vertical_estimator
                     rmsg.range = (*itr).range;
                 }
             }
+            // return;
 
 
             try
@@ -1090,6 +1119,8 @@ namespace vertical_estimator
         };
 
         std::vector<sensor_msgs::Range> rangemsg_vector;
+
+        geometry_msgs::Point new_int;
 
         // Eigen::MatrixXd output(3,3);
 
