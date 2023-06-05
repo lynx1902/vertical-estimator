@@ -20,6 +20,8 @@
 #include <mrs_lib/lkf.h>
 
 #include <sensor_msgs/Range.h>
+#include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/Point.h>
 
 
 
@@ -571,6 +573,7 @@ namespace vertical_estimator
                         agents[aid].hdg_at_last_pfcu = focal_heading;
                         agents[aid].pfcu_init = true;
                         agents[aid].angle_z = atan2(agents[aid].pfcu.y,agents[aid].pfcu.x);
+                        agents[aid].quat = res_b_.value().pose.pose.orientation;
 
                         for (auto &nb : agents)
                         {
@@ -584,6 +587,7 @@ namespace vertical_estimator
                                 double hdg_diff = nb.hdg_at_last_pfcu - agents[aid].hdg_at_last_pfcu;
                                 double nb_hdg = nb.angle_z + hdg_diff;
                                 double gap;
+                                
 
                                 if (nb_hdg > agents[aid].angle_z)
                                 {
@@ -602,6 +606,8 @@ namespace vertical_estimator
                                 double lgl = M_PI / 6;
                                 double ugl = 5 * M_PI / 6;
 
+                                 geometry_msgs::Point new_int;
+
                                 if (gap > lgl && gap < ugl)
                                 {
                                     geometry_msgs::Point A;
@@ -611,7 +617,8 @@ namespace vertical_estimator
                                     geometry_msgs::Point B;
                                     B.x = A.x + cos(nb_hdg + focal_heading);
                                     B.y = A.y + sin(nb_hdg + focal_heading);
-                                    B.z = A.z;
+                                    B.z = A.z + sin(Quat2Eul(nb.quat));
+                                    // B.z = A.z;
                                     geometry_msgs::Point C;
                                     C.x = agents[aid].pfcu.x;
                                     C.y = agents[aid].pfcu.y;
@@ -619,7 +626,8 @@ namespace vertical_estimator
                                     geometry_msgs::Point D;
                                     D.x = C.x + cos(agents[aid].angle_z + focal_heading);
                                     D.y = C.y + sin(agents[aid].angle_z + focal_heading);
-                                    D.z = C.z;
+                                    D.z = C.z + sin(Quat2Eul(agents[aid].quat));
+                                    // D.z = C.z;
 
                                     double a1 = B.y - A.y;
                                     double b1 = A.x - B.x;
@@ -631,16 +639,82 @@ namespace vertical_estimator
                                     double c2 = D.z - C.z;
                                     double d2 = a2 * C.x + b2 * C.y + c2 * C.z;
 
+                                    // Line AB: A.x + t * (B.x - A.x) = X
+                                    // double a1 = B.x - A.x;
+                                    // double b1 = -(D.x - C.x);
+                                    // double c1 = C.x - A.x;
+
+                                    // Line AB: A.y + t * (B.y - A.y) = Y
+                                    // double a2 = B.y - A.y;
+                                    // double b2 = -(D.y - C.y);
+                                    // double c2 = C.y - A.y;
+
+                                    // Line AB: A.z + t * (B.z - A.z) = Z
+                                    // double a3 = B.z - A.z;
+                                    // double b3 = -(D.z - C.z);
+                                    // double c3 = C.z - A.z;               
+
+                                    // geometry_msgs::Point dirAB, dirCD;
+                                    // dirAB.x = B.x - A.x;
+                                    // dirAB.y = B.y - A.y;
+                                    // dirAB.z = B.z - A.z;
+                                    // dirCD.x = D.x - C.x;
+                                    // dirCD.y = D.y - C.y;
+                                    // dirCD.z = D.z - C.z;
+
+                                    // geometry_msgs::Point crossProduct;
+                                    // crossProduct.x = dirAB.y * dirCD.z - dirAB.z * dirCD.y;
+                                    // crossProduct.y = dirAB.z * dirCD.x - dirAB.x * dirCD.z;
+                                    // crossProduct.z = dirAB.x * dirCD.y - dirAB.y * dirCD.x;
+
+                                    // double det = a1 * (b2 * c3 - b3 * c2) - a2 * (b1 * c3 - b3 * c1) + a3 * (b1 * c2 - b2 * c1);
+
+                                    // double crossProductMagnitude = std::sqrt(crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y + crossProduct.z * crossProduct.z);
+
+                                    // if (crossProductMagnitude == 0.0) {
+                                    //     ROS_ERROR("The line segments AB and CD are parallel. They do not intersect.");
+    
+                                    // }
+
+                                    //  double t = ((C.x - A.x) * crossProduct.x + (C.y - A.y) * crossProduct.y + (C.z - A.z) * crossProduct.z) / crossProductMagnitude;
+                                    //  double u = ((A.x - C.x) * crossProduct.x + (A.y - C.y) * crossProduct.y + (A.z - C.z) * crossProduct.z) / crossProductMagnitude;
+    
+                                    //  // Check if the line segments intersect within their domains
+                                    // if (t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0) {
+                                    //     new_int.x = A.x + t * dirAB.x;
+                                    //     new_int.y = A.y + t * dirAB.y;
+                                    //     new_int.z = A.z + t * dirAB.z;
+                                    // } else {
+                                    //     ROS_ERROR("The line segments AB and CD do not intersect within their domains.");
+                                    // }
+
                                     double det = a1 * (b2 * c1 - b1 * c2) - a2 * (b1 * c1 - a1 * c2) + b1 * (a2 * c2 - b2 * c1);
 
-                                    geometry_msgs::Point new_int;
+                                   
 
                                     if (abs(det) < 0.0001)
                                     {
                                         ROS_ERROR("Intersection not found, det: %f", det);
                                     }
                                     else
-                                    {
+                                    {   
+                                        // double t1 = (c1 * (b2 * c3 - b3 * c2) - c2 * (b1 * c3 - b3 * c1) + c3 * (b1 * c2 - b2 * c1)) / det;
+                                        // double t2 = (a1 * (c2 * D.z - c3 * D.y) - a2 * (c1 * D.z - c3 * D.x) + a3 * (c1 * D.y - c2 * D.x)) / det;
+                                        // double t3 = (a1 * (b2 * D.z - b3 * D.y) - a2 * (b1 * D.z - b3 * D.x) + a3 * (b1 * D.y - b2 * D.x)) / det;
+
+                                        // Calculate the intersection point coordinates
+                                        // double intersectionX = A.x + t1 * (B.x - A.x);
+                                        // double intersectionY = A.y + t1 * (B.y - A.y);
+                                        // double intersectionZ = A.z + t1 * (B.z - A.z);
+
+                                        // Create a geometry_msgs::Point object for the intersection point
+                                        
+                                        // new_int.x = intersectionX;
+                                        // new_int.y = intersectionY;
+                                        // new_int.z = intersectionZ;
+
+
+
                                         double detx = d1 * (b2 * c1 - b1 * c2) - d2 * (b1 * c1 - a1 * c2) + b1 * (d2 * c2 - d1 * c1);
                                         double dety = a1 * (d2 * c2 - d1 * c1) - a2 * (d1 * c1 - d2 * c1) + d1 * (a2 * c2 - b2 * c1);
                                         double detz = a1 * (b2 * d1 - b1 * d2) - a2 * (b1 * d1 - a1 * d2) + b1 * (a2 * d2 - b2 * d1);
@@ -659,6 +733,7 @@ namespace vertical_estimator
                                     double gt_dist = sqrt(pow(focal_position.x - new_int.x, 2) + pow(focal_position.y - new_int.y, 2) +
                                                           pow(focal_position.z - new_int.z, 2));
                                     if (abs(det) > 0.0001 && gt_dist < 5.0)
+                                    // if(gt_dist < 5.0)
                                     {
                                         ROS_INFO(
                                             "D: %f, h_diff: %f, gap: %f, det: %f, nb_dt: %f, eb1: %f, eb2: %f, eb3: %f, ea1: %f, ea2: %f, "
@@ -975,6 +1050,24 @@ namespace vertical_estimator
         //}
         //}
 
+        double Quat2Eul(const geometry_msgs::Quaternion quat){
+
+            geometry_msgs::Quaternion quat_local = quat;
+           
+            double mag = sqrt(pow(quat.x,2) + pow(quat.y,2) + pow(quat.z,2) + pow(quat.w,2));
+
+            quat_local.x = quat_local.x/mag;
+            quat_local.y = quat_local.y/mag;
+            quat_local.z = quat_local.z/mag;
+            quat_local.w = quat_local.y/mag;
+            
+            q2e.roll = atan2(2 * (quat_local.w * quat_local.x + quat_local.y * quat_local.z), 1 - 2 * (pow(quat_local.x,2) + pow(quat_local.y,2))); //around x axis
+            q2e.pitch = asin(2 * (quat_local.w * quat_local.y - quat_local.z * quat_local.x)); //around y axis
+            q2e.yaw = atan2(2 * (quat_local.w * quat_local.z + quat_local.x * quat_local.y), 1 - 2 * (pow(quat_local.y,2) + pow(quat_local.z,2))); //around z axis
+
+            return q2e.roll;
+        }
+
     private:
         /* Global variables //{ */
         /* ROS variables, topics and global bools //{ */
@@ -1105,6 +1198,8 @@ namespace vertical_estimator
             statecov_t filter_state;
 
             double angle_z;
+
+            geometry_msgs::Quaternion quat;
         };
 
         std::vector<Neighbor> agents;
@@ -1126,8 +1221,17 @@ namespace vertical_estimator
         // geometry_msgs::Point new_int;
 
         ros::Publisher pub_uvdar_pos_check;
-        // Eigen::MatrixXd output(3,3);
 
+        
+        struct EulAng
+        {
+            double roll;
+            double pitch;
+            double yaw;
+        };
+
+        EulAng q2e;
+        // Eigen::MatrixXd output(3,3);
         //}
         //}
     };

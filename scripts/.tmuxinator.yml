@@ -24,7 +24,7 @@ windows:
   - spawn:
       layout: tiled
       panes:
-        - waitForSimulation; sleep 1; rosservice call /mrs_drone_spawner/spawn "29 $UAV_TYPE --pos -25 10.0 0.5 0.785 --enable-ground-truth  --enable-rangefinder --enable-dual-uv-cameras --uvcam_calib_file \"$(rospack find uvdar_core)/include/OCamCalib/config/calib_results_bf_uv_fe.txt\" --enable-uv-leds --uvled_s_l 2 --uvled_s_r 2"
+        - waitForSimulation; sleep 1; rosservice call /mrs_drone_spawner/spawn "29 $UAV_TYPE --pos -25 10.0 0.5 1.57 --enable-ground-truth  --enable-rangefinder --enable-dual-uv-cameras --uvcam_calib_file \"$(rospack find uvdar_core)/include/OCamCalib/config/calib_results_bf_uv_fe.txt\" --enable-uv-leds --uvled_s_l 2 --uvled_s_r 2"
         - waitForSimulation; sleep 1; rosservice call /mrs_drone_spawner/spawn "30 $UAV_TYPE --pos -31 15 0.5 0.0 --enable-ground-truth  --enable-rangefinder --enable-dual-uv-cameras --uvcam_calib_file \"$(rospack find uvdar_core)/include/OCamCalib/config/calib_results_bf_uv_fe.txt\" --enable-uv-leds --uvled_s_l 3 --uvled_s_r 3"
         - waitForSimulation; sleep 1; rosservice call /mrs_drone_spawner/spawn "38 $UAV_TYPE --pos -19 15 0.5 3.14 --enable-ground-truth --enable-rangefinder --enable-dual-uv-cameras --uvcam_calib_file \"$(rospack find uvdar_core)/include/OCamCalib/config/calib_results_bf_uv_fe.txt\" --enable-uv-leds --uvled_s_l 0 --uvled_s_r 0"
         # - waitForSimulation; sleep 1; rosservice call /mrs_drone_spawner/spawn "39 $UAV_TYPE --pos -25 20 0.5 0.0 --enable-ground-truth  --enable-rangefinder --enable-dual-uv-cameras --uvcam_calib_file \"$(rospack find uvdar_core)/include/OCamCalib/config/calib_results_bf_uv_fe.txt\" --enable-uv-leds --uvled_s_l 1 --uvled_s_r 1"
@@ -163,8 +163,8 @@ windows:
   #     panes:
   #       - waitForOdometry; rosrun plotjuggler plotjuggler
 
-  # - recording:
-  #     layout: tiled
-  #     panes:
-  #       - waitForOdometry; rosbag record -O uav29_sensor_check.bag /uav30/odometry/odom_main /uav38/odometry/odom_main /uav29/odometry/imu_untilted
-  #       - waitForOdometry; rosbag record -O uav29_uvdar_check.bag /uav29/vertical_estimator/velocity_uvdar_fcu /uav29/vertical_estimator/vert_estimator_output_fcu /uav29/vertical_estimator/uvdar_pos_check
+  - recording:
+      layout: tiled
+      panes:
+        - waitForOdometry; rosbag record -O uav29_test.bag /uav29/vertical_estimator/vert_est /uav29/garmin/range
+        # - waitForOdometry; rosbag record -O uav29_uvdar_check.bag /uav29/vertical_estimator/velocity_uvdar_fcu /uav29/vertical_estimator/vert_estimator_output_fcu /uav29/vertical_estimator/uvdar_pos_check
