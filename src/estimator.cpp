@@ -618,7 +618,7 @@ namespace vertical_estimator
                                     B.x = A.x + cos(nb_hdg + focal_heading);
                                     B.y = A.y + sin(nb_hdg + focal_heading);
                                     B.z = A.z + sin(Quat2Eul(nb.quat));
-                                    // B.z = A.z;
+                                    // B.z = A.z ;
                                     geometry_msgs::Point C;
                                     C.x = agents[aid].pfcu.x;
                                     C.y = agents[aid].pfcu.y;
@@ -627,7 +627,7 @@ namespace vertical_estimator
                                     D.x = C.x + cos(agents[aid].angle_z + focal_heading);
                                     D.y = C.y + sin(agents[aid].angle_z + focal_heading);
                                     D.z = C.z + sin(Quat2Eul(agents[aid].quat));
-                                    // D.z = C.z;
+                                    // D.z = C.z ;
 
                                     double a1 = B.y - A.y;
                                     double b1 = A.x - B.x;

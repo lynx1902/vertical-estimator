@@ -29,7 +29,7 @@
       <param name="odom_imu_topic" value="/$(arg uav_name)/odometry/imu_untilted" />
       <param name="velocity_reduced_topic" value="/odometry/velocity_reduced" />
       
-      <!-- <param name="range_topic" value="/$(arg uav_name)/garmin/range"/> -->
+      <param name="range_topic" value="/$(arg uav_name)/garmin/range"/>
 
       <param name="range2_publish_topic" value="/$(arg uav_name)/garmin/range2"/>  
 
