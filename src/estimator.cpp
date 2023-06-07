@@ -22,7 +22,9 @@
 #include <sensor_msgs/Range.h>
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/Point.h>
-
+#include <tf/tf.h>
+#include <tf/transform_datatypes.h>
+#include <geometry_msgs/Vector3.h>
 
 
 /* Filter preliminary //{ */
@@ -609,50 +611,26 @@ namespace vertical_estimator
                                  geometry_msgs::Point new_int;
 
                                 if (gap > lgl && gap < ugl)
-                                {
-                                    geometry_msgs::Point A;
-                                    A.x = nb.pfcu.x;
-                                    A.y = nb.pfcu.y;
-                                    A.z = nb.filter_state.x(0);
-                                    geometry_msgs::Point B;
-                                    B.x = A.x + cos(nb_hdg + focal_heading);
-                                    B.y = A.y + sin(nb_hdg + focal_heading);
-                                    B.z = A.z + sin(Quat2Eul(nb.quat));
-                                    // B.z = A.z ;
-                                    geometry_msgs::Point C;
-                                    C.x = agents[aid].pfcu.x;
-                                    C.y = agents[aid].pfcu.y;
-                                    C.z = agents[aid].filter_state.x(0); /*need to calculate actual value*/
-                                    geometry_msgs::Point D;
-                                    D.x = C.x + cos(agents[aid].angle_z + focal_heading);
-                                    D.y = C.y + sin(agents[aid].angle_z + focal_heading);
-                                    D.z = C.z + sin(Quat2Eul(agents[aid].quat));
-                                    // D.z = C.z ;
-
-                                    double a1 = B.y - A.y;
-                                    double b1 = A.x - B.x;
-                                    double c1 = B.z - A.z;
-                                    double d1 = a1 * A.x + b1 * A.y + c1 * A.z;
-
-                                    double a2 = D.y - C.y;
-                                    double b2 = C.x - D.x;
-                                    double c2 = D.z - C.z;
-                                    double d2 = a2 * C.x + b2 * C.y + c2 * C.z;
-
-                                    // Line AB: A.x + t * (B.x - A.x) = X
-                                    // double a1 = B.x - A.x;
-                                    // double b1 = -(D.x - C.x);
-                                    // double c1 = C.x - A.x;
-
-                                    // Line AB: A.y + t * (B.y - A.y) = Y
-                                    // double a2 = B.y - A.y;
-                                    // double b2 = -(D.y - C.y);
-                                    // double c2 = C.y - A.y;
-
-                                    // Line AB: A.z + t * (B.z - A.z) = Z
-                                    // double a3 = B.z - A.z;
-                                    // double b3 = -(D.z - C.z);
-                                    // double c3 = C.z - A.z;               
+                                {   
+                                    
+                                    // geometry_msgs::Point A;
+                                    // A.x = nb.pfcu.x;
+                                    // A.y = nb.pfcu.y;
+                                    // A.z = nb.filter_state.x(0);
+                                    // geometry_msgs::Point B;
+                                    // B.x = A.x + cos(nb_hdg + focal_heading);
+                                    // B.y = A.y + sin(nb_hdg + focal_heading);
+                                    // B.z = A.z + (sqrt(pow(B.x,2) + pow(B.y,2))*sin(Quat2Eul(nb.quat)));
+                                    // // B.z = A.z ;
+                                    // geometry_msgs::Point C;
+                                    // C.x = agents[aid].pfcu.x;
+                                    // C.y = agents[aid].pfcu.y;
+                                    // C.z = agents[aid].filter_state.x(0); /*need to calculate actual value*/
+                                    // geometry_msgs::Point D;
+                                    // D.x = C.x + cos(agents[aid].angle_z + focal_heading);
+                                    // D.y = C.y + sin(agents[aid].angle_z + focal_heading);
+                                    // D.z = C.z + (sqrt(pow(C.x,2) + pow(C.y,2))*sin(Quat2Eul(agents[aid].quat)));
+                                    // // D.z = C.z ;          
 
                                     // geometry_msgs::Point dirAB, dirCD;
                                     // dirAB.x = B.x - A.x;
@@ -667,8 +645,6 @@ namespace vertical_estimator
                                     // crossProduct.y = dirAB.z * dirCD.x - dirAB.x * dirCD.z;
                                     // crossProduct.z = dirAB.x * dirCD.y - dirAB.y * dirCD.x;
 
-                                    // double det = a1 * (b2 * c3 - b3 * c2) - a2 * (b1 * c3 - b3 * c1) + a3 * (b1 * c2 - b2 * c1);
-
                                     // double crossProductMagnitude = std::sqrt(crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y + crossProduct.z * crossProduct.z);
 
                                     // if (crossProductMagnitude == 0.0) {
@@ -676,8 +652,8 @@ namespace vertical_estimator
     
                                     // }
 
-                                    //  double t = ((C.x - A.x) * crossProduct.x + (C.y - A.y) * crossProduct.y + (C.z - A.z) * crossProduct.z) / crossProductMagnitude;
-                                    //  double u = ((A.x - C.x) * crossProduct.x + (A.y - C.y) * crossProduct.y + (A.z - C.z) * crossProduct.z) / crossProductMagnitude;
+                                    // double t = ((C.x - A.x) * crossProduct.x + (C.y - A.y) * crossProduct.y + (C.z - A.z) * crossProduct.z) / crossProductMagnitude;
+                                    // double u = ((A.x - C.x) * crossProduct.x + (A.y - C.y) * crossProduct.y + (A.z - C.z) * crossProduct.z) / crossProductMagnitude;
     
                                     //  // Check if the line segments intersect within their domains
                                     // if (t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0) {
@@ -687,43 +663,44 @@ namespace vertical_estimator
                                     // } else {
                                     //     ROS_ERROR("The line segments AB and CD do not intersect within their domains.");
                                     // }
-
-                                    double det = a1 * (b2 * c1 - b1 * c2) - a2 * (b1 * c1 - a1 * c2) + b1 * (a2 * c2 - b2 * c1);
-
-                                   
-
-                                    if (abs(det) < 0.0001)
-                                    {
-                                        ROS_ERROR("Intersection not found, det: %f", det);
-                                    }
-                                    else
-                                    {   
-                                        // double t1 = (c1 * (b2 * c3 - b3 * c2) - c2 * (b1 * c3 - b3 * c1) + c3 * (b1 * c2 - b2 * c1)) / det;
-                                        // double t2 = (a1 * (c2 * D.z - c3 * D.y) - a2 * (c1 * D.z - c3 * D.x) + a3 * (c1 * D.y - c2 * D.x)) / det;
-                                        // double t3 = (a1 * (b2 * D.z - b3 * D.y) - a2 * (b1 * D.z - b3 * D.x) + a3 * (b1 * D.y - b2 * D.x)) / det;
-
-                                        // Calculate the intersection point coordinates
-                                        // double intersectionX = A.x + t1 * (B.x - A.x);
-                                        // double intersectionY = A.y + t1 * (B.y - A.y);
-                                        // double intersectionZ = A.z + t1 * (B.z - A.z);
-
-                                        // Create a geometry_msgs::Point object for the intersection point
-                                        
-                                        // new_int.x = intersectionX;
-                                        // new_int.y = intersectionY;
-                                        // new_int.z = intersectionZ;
-
-
-
-                                        double detx = d1 * (b2 * c1 - b1 * c2) - d2 * (b1 * c1 - a1 * c2) + b1 * (d2 * c2 - d1 * c1);
-                                        double dety = a1 * (d2 * c2 - d1 * c1) - a2 * (d1 * c1 - d2 * c1) + d1 * (a2 * c2 - b2 * c1);
-                                        double detz = a1 * (b2 * d1 - b1 * d2) - a2 * (b1 * d1 - a1 * d2) + b1 * (a2 * d2 - b2 * d1);
-
-                                        new_int.x = detx / det;
-                                        new_int.y = dety / det;
-                                        new_int.z = detz / det;
-                                    }
                                     
+                                    geometry_msgs::Point A;
+                                    A.x = nb.pfcu.x;
+                                    A.y = nb.pfcu.y;
+                                    A.z = nb.filter_state.x(0);
+                                    geometry_msgs::Point B;
+                                    B.x = A.x + cos((nb_hdg + focal_heading));
+                                    B.y = A.y + sin((nb_hdg + focal_heading));
+                                    geometry_msgs::Point C;
+                                    C.x = agents[aid].pfcu.x;
+                                    C.y = agents[aid].pfcu.y;
+                                    C.z = agents[aid].filter_state.x(0);
+                                    geometry_msgs::Point D;
+                                    D.x = C.x + cos((agents[aid].angle_z + focal_heading));
+                                    D.y = C.y + sin((agents[aid].angle_z + focal_heading));
+
+                                    double a1 = B.y - A.y;
+                                    double b1 = A.x - B.x;
+                                    double c1 = a1*(A.x) + b1*(A.y);
+
+                                    double a2 = D.y - C.y;
+                                    double b2 = C.x - D.x;
+                                    double c2 = a2*(C.x) + b2*(C.y);
+
+                                    double det = a1*b2 - a2*b1;
+
+                                    geometry_msgs::Point new_int;
+
+                                    if(abs(det) < 0.0001){
+                                      ROS_ERROR("Intersection not found, det: %f", det);
+                                    } else{
+                                      ROS_INFO("Calculating new_int...");
+                                      new_int.x = (b2*c1 - b1*c2)/det;
+                                      new_int.y = (a1*c2 - a2*c1)/det;
+                                      new_int.z = (A.z + sin(Quat2Eul(nb.quat))) + (C.z + sin(Quat2Eul(agents[aid].quat)))/4.0;
+                                    }
+
+
                                     geometry_msgs::Point uvdar_pos_check;
                                     uvdar_pos_check.x = new_int.x;
                                     uvdar_pos_check.y = new_int.y;
@@ -736,9 +713,9 @@ namespace vertical_estimator
                                     // if(gt_dist < 5.0)
                                     {
                                         ROS_INFO(
-                                            "D: %f, h_diff: %f, gap: %f, det: %f, nb_dt: %f, eb1: %f, eb2: %f, eb3: %f, ea1: %f, ea2: %f, "
+                                            "D: %f, h_diff: %f, gap: %f, nb_dt: %f, eb1: %f, eb2: %f, eb3: %f, ea1: %f, ea2: %f, "
                                             "ea3: %f",
-                                            gt_dist, hdg_diff, gap, det, nb_dt, nb.eigens.x, nb.eigens.y, nb.eigens.z, agents[aid].eigens.x,
+                                            gt_dist, hdg_diff, gap, nb_dt, nb.eigens.x, nb.eigens.y, nb.eigens.z, agents[aid].eigens.x,
                                             agents[aid].eigens.y, agents[aid].eigens.z);
 
                                         sum_of_ints.ints.x += new_int.x;
@@ -1052,20 +1029,36 @@ namespace vertical_estimator
 
         double Quat2Eul(const geometry_msgs::Quaternion quat){
 
-            geometry_msgs::Quaternion quat_local = quat;
+            // geometry_msgs::Quaternion quat_local = quat;
            
-            double mag = sqrt(pow(quat.x,2) + pow(quat.y,2) + pow(quat.z,2) + pow(quat.w,2));
+            // double mag = sqrt(pow(quat.x,2) + pow(quat.y,2) + pow(quat.z,2) + pow(quat.w,2));
 
-            quat_local.x = quat_local.x/mag;
-            quat_local.y = quat_local.y/mag;
-            quat_local.z = quat_local.z/mag;
-            quat_local.w = quat_local.y/mag;
+            // quat_local.x = quat_local.x/mag;
+            // quat_local.y = quat_local.y/mag;
+            // quat_local.z = quat_local.z/mag;
+            // quat_local.w = quat_local.y/mag;
             
-            q2e.roll = atan2(2 * (quat_local.w * quat_local.x + quat_local.y * quat_local.z), 1 - 2 * (pow(quat_local.x,2) + pow(quat_local.y,2))); //around x axis
-            q2e.pitch = asin(2 * (quat_local.w * quat_local.y - quat_local.z * quat_local.x)); //around y axis
-            q2e.yaw = atan2(2 * (quat_local.w * quat_local.z + quat_local.x * quat_local.y), 1 - 2 * (pow(quat_local.y,2) + pow(quat_local.z,2))); //around z axis
+            // q2e.roll = atan2(2 * (quat_local.w * quat_local.x + quat_local.y * quat_local.z), 1 - 2 * (pow(quat_local.x,2) + pow(quat_local.y,2))); //around x axis
+            // q2e.pitch = asin(2 * (quat_local.w * quat_local.y - quat_local.z * quat_local.x)); //around y axis
+            // q2e.yaw = atan2(2 * (quat_local.w * quat_local.z + quat_local.x * quat_local.y), 1 - 2 * (pow(quat_local.y,2) + pow(quat_local.z,2))); //around z axis
 
-            return q2e.roll;
+            // return q2e.pitch;
+
+            tf::Quaternion quater;
+            tf::quaternionMsgToTF(quat, quater);
+
+            // the tf::Quaternion has a method to acess roll pitch and yaw
+            double roll, pitch, yaw;
+            tf::Matrix3x3(quater).getRPY(roll, pitch, yaw);
+
+            // the found angles are written in a geometry_msgs::Vector3
+            geometry_msgs::Vector3 rpy;
+            rpy.x = roll;
+            rpy.y = pitch;
+            rpy.z = yaw;
+
+            return rpy.x;
+
         }
 
     private:
