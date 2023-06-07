@@ -83,8 +83,8 @@ windows:
       layout: tiled
       panes:
         - export UAV_NAME=uav29; waitForOdometry; roslaunch my_code vertical_estimator.launch
-        # - export UAV_NAME=uav30; waitForOdometry; roslaunch my_code vertical_estimator.launch
-        # - export UAV_NAME=uav38; waitForOdometry; roslaunch my_code vertical_estimator.launch
+        - export UAV_NAME=uav30; waitForOdometry; roslaunch my_code vertical_estimator.launch
+        - export UAV_NAME=uav38; waitForOdometry; roslaunch my_code vertical_estimator.launch
         # - export UAV_NAME=uav39; waitForOdometry; roslaunch my_code vertical_estimator.launch
   
   
@@ -105,12 +105,12 @@ windows:
         - waitForCompile; gz world --pause=0; sleep 6;  export UAV_NAME=uav38; waitForControl; roslaunch uvdar_core sim_two_sided.launch
         # - waitForCompile; gz world --pause=0; sleep 6;  export UAV_NAME=uav39; waitForControl; roslaunch uvdar_core sim_two_sided.launch
   
-  # - uv_filtered:
-  #     layout: even-vertical
-  #     panes:
-  #       - waitForCompile; gz world --pause=0; sleep 6;  export UAV_NAME=uav29; waitForControl; roslaunch uvdar_core uvdar_kalman.launch output_frame:=$UAV_NAME/gps_origin 
-  #       - waitForCompile; gz world --pause=0; sleep 6;  export UAV_NAME=uav30; waitForControl; roslaunch uvdar_core uvdar_kalman.launch output_frame:=$UAV_NAME/gps_origin
-  #       - waitForCompile; gz world --pause=0; sleep 6;  export UAV_NAME=uav38; waitForControl; roslaunch uvdar_core uvdar_kalman.launch output_frame:=$UAV_NAME/gps_origin
+  - uv_filtered:
+      layout: even-vertical
+      panes:
+        - waitForCompile; gz world --pause=0; sleep 6;  export UAV_NAME=uav29; waitForControl; roslaunch uvdar_core uvdar_kalman.launch output_frame:=$UAV_NAME/gps_origin 
+        - waitForCompile; gz world --pause=0; sleep 6;  export UAV_NAME=uav30; waitForControl; roslaunch uvdar_core uvdar_kalman.launch output_frame:=$UAV_NAME/gps_origin
+        - waitForCompile; gz world --pause=0; sleep 6;  export UAV_NAME=uav38; waitForControl; roslaunch uvdar_core uvdar_kalman.launch output_frame:=$UAV_NAME/gps_origin
         # - waitForCompile; gz world --pause=0; sleep 6;  export UAV_NAME=uav39; waitForControl; roslaunch uvdar_core uvdar_kalman.launch output_frame:=$UAV_NAME/gps_origin
   - safety_area:
       layout: tiled
@@ -148,7 +148,8 @@ windows:
       layout: even-vertical
       panes:
         -  'export UAV_NAME=uav29; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[0.0, 10.0, 1.5, 0.0\]\"'
-        -  'export UAV_NAME=uav30; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[0.0, 18.0, 6.7, 0.0\]\"'
+        -  'export UAV_NAME=uav30; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[0.0, 15.0, 1.7, 0.0\]\"'
+        -  'export UAV_NAME=uav38; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[0.0, 13.0, 2.5, 0.0\]\"'
 
   - waypoint-flier-uav29:
       layout: tiled
@@ -166,5 +167,5 @@ windows:
   - recording:
       layout: tiled
       panes:
-        - waitForOdometry; rosbag record -O uav29_test.bag /uav29/vertical_estimator/vert_est /uav29/garmin/range /uav29/vertical_estimator/uvdar_pos_check
+        - waitForOdometry; rosbag record -O uav_all_test.bag /uav29/vertical_estimator/vert_est /uav29/garmin/range /uav29/vertical_estimator/uvdar_pos_check /uav38/vertical_estimator/vert_est /uav38/garmin/range /uav38/vertical_estimator/uvdar_pos_check /uav30/vertical_estimator/vert_est /uav30/garmin/range /uav30/vertical_estimator/uvdar_pos_check
         # - waitForOdometry; rosbag record -O uav29_uvdar_check.bag /uav29/vertical_estimator/velocity_uvdar_fcu /uav29/vertical_estimator/vert_estimator_output_fcu /uav29/vertical_estimator/uvdar_pos_check

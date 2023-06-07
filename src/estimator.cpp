@@ -78,6 +78,8 @@ namespace vertical_estimator
             param_loader.loadParam("odom_imu_topic", odom_imu_topic);
             param_loader.loadParam("measured_poses_topics", measured_poses_topics, measured_poses_topics);
 
+            param_loader.loadParam("filtered_poses_topics",filtered_poses_topics);            
+
             param_loader.loadParam("range_topic", range_topic);
             param_loader.loadParam("range2_publish_topic", range2_publish_topic);
 
@@ -211,12 +213,16 @@ namespace vertical_estimator
                 ROS_WARN("[UVDARKalman]: No topics of measured_poses_topics were supplied. Returning.");
                 return;
             }
+            
+           
 
             for (auto &topic : measured_poses_topics)
             {
                 ROS_INFO_STREAM("[UVDARKalman]: Subscribing to " << topic);
+
                 sub_uvdar_measurements.push_back(nh_.subscribe(topic, 3, &VerticalEstimator::callbackUvdarMeasurement, this,
                                                                ros::TransportHints().tcpNoDelay()));
+                //  sub_uvdar_measurements.push_back(nh_.subscribe(filtered_poses_topics,1,&VerticalEstimator::callbackUvdarMeasurement, this, ros::TransportHints().tcpNoDelay()));
             }
             //}
 
@@ -613,39 +619,47 @@ namespace vertical_estimator
                                 if (gap > lgl && gap < ugl)
                                 {   
                                     
-                                    // geometry_msgs::Point A;
-                                    // A.x = nb.pfcu.x;
-                                    // A.y = nb.pfcu.y;
-                                    // A.z = nb.filter_state.x(0);
-                                    // geometry_msgs::Point B;
-                                    // B.x = A.x + cos(nb_hdg + focal_heading);
-                                    // B.y = A.y + sin(nb_hdg + focal_heading);
-                                    // B.z = A.z + (sqrt(pow(B.x,2) + pow(B.y,2))*sin(Quat2Eul(nb.quat)));
-                                    // // B.z = A.z ;
-                                    // geometry_msgs::Point C;
-                                    // C.x = agents[aid].pfcu.x;
-                                    // C.y = agents[aid].pfcu.y;
-                                    // C.z = agents[aid].filter_state.x(0); /*need to calculate actual value*/
-                                    // geometry_msgs::Point D;
-                                    // D.x = C.x + cos(agents[aid].angle_z + focal_heading);
-                                    // D.y = C.y + sin(agents[aid].angle_z + focal_heading);
-                                    // D.z = C.z + (sqrt(pow(C.x,2) + pow(C.y,2))*sin(Quat2Eul(agents[aid].quat)));
-                                    // // D.z = C.z ;          
+                                    geometry_msgs::Point A;
+                                    A.x = nb.pfcu.x;
+                                    A.y = nb.pfcu.y;
+                                    A.z = nb.filter_state.x(0);
+                                    geometry_msgs::Point B;
+                                    B.x = A.x + cos(nb_hdg + focal_heading);
+                                    B.y = A.y + sin(nb_hdg + focal_heading);
+                                    B.z = A.z + sin(Quat2Eul(nb.quat));
+                                    // B.z = A.z ;
+                                    geometry_msgs::Point C;
+                                    C.x = agents[aid].pfcu.x;
+                                    C.y = agents[aid].pfcu.y;
+                                    C.z = agents[aid].filter_state.x(0); /*need to calculate actual value*/
+                                    geometry_msgs::Point D;
+                                    D.x = C.x + cos(agents[aid].angle_z + focal_heading);
+                                    D.y = C.y + sin(agents[aid].angle_z + focal_heading);
+                                    D.z = C.z + sin(Quat2Eul(agents[aid].quat));
+                                    // D.z = C.z ;          
 
-                                    // geometry_msgs::Point dirAB, dirCD;
-                                    // dirAB.x = B.x - A.x;
-                                    // dirAB.y = B.y - A.y;
-                                    // dirAB.z = B.z - A.z;
-                                    // dirCD.x = D.x - C.x;
-                                    // dirCD.y = D.y - C.y;
-                                    // dirCD.z = D.z - C.z;
+                                    geometry_msgs::Point dirAB, dirCD;
+                                    dirAB.x = B.x - A.x;
+                                    dirAB.y = B.y - A.y;
+                                    dirAB.z = B.z - A.z;
+                                    dirCD.x = D.x - C.x;
+                                    dirCD.y = D.y - C.y;
+                                    dirCD.z = D.z - C.z;
 
-                                    // geometry_msgs::Point crossProduct;
-                                    // crossProduct.x = dirAB.y * dirCD.z - dirAB.z * dirCD.y;
-                                    // crossProduct.y = dirAB.z * dirCD.x - dirAB.x * dirCD.z;
-                                    // crossProduct.z = dirAB.x * dirCD.y - dirAB.y * dirCD.x;
+                                    // Vector connecting any arbitrary point on AB to any arbitrary point on CD
+                                    geometry_msgs::Point L;
+                                    L.x = C.x - A.x;
+                                    L.y = C.y - A.y;
+                                    L.z = C.z - A.z;
 
-                                    // double crossProductMagnitude = std::sqrt(crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y + crossProduct.z * crossProduct.z);
+                                    geometry_msgs::Point crossProduct;
+                                    crossProduct.x = dirAB.y * dirCD.z - dirAB.z * dirCD.y;
+                                    crossProduct.y = dirAB.z * dirCD.x - dirAB.x * dirCD.z;
+                                    crossProduct.z = dirAB.x * dirCD.y - dirAB.y * dirCD.x;
+
+                                    double crossProductMagnitude = sqrt(crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y + crossProduct.z * crossProduct.z);
+
+                                    new_int.z = abs(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z)/(crossProductMagnitude*2.0);
 
                                     // if (crossProductMagnitude == 0.0) {
                                     //     ROS_ERROR("The line segments AB and CD are parallel. They do not intersect.");
@@ -664,53 +678,52 @@ namespace vertical_estimator
                                     //     ROS_ERROR("The line segments AB and CD do not intersect within their domains.");
                                     // }
                                     
-                                    geometry_msgs::Point A;
-                                    A.x = nb.pfcu.x;
-                                    A.y = nb.pfcu.y;
-                                    A.z = nb.filter_state.x(0);
-                                    geometry_msgs::Point B;
-                                    B.x = A.x + cos((nb_hdg + focal_heading));
-                                    B.y = A.y + sin((nb_hdg + focal_heading));
-                                    geometry_msgs::Point C;
-                                    C.x = agents[aid].pfcu.x;
-                                    C.y = agents[aid].pfcu.y;
-                                    C.z = agents[aid].filter_state.x(0);
-                                    geometry_msgs::Point D;
-                                    D.x = C.x + cos((agents[aid].angle_z + focal_heading));
-                                    D.y = C.y + sin((agents[aid].angle_z + focal_heading));
+                                    // geometry_msgs::Point A;
+                                    // A.x = nb.pfcu.x;
+                                    // A.y = nb.pfcu.y;
+                                    // A.z = nb.filter_state.x(0);
+                                    // geometry_msgs::Point B;
+                                    // B.x = A.x + cos((nb_hdg + focal_heading));
+                                    // B.y = A.y + sin((nb_hdg + focal_heading));
+                                    // geometry_msgs::Point C;
+                                    // C.x = agents[aid].pfcu.x;
+                                    // C.y = agents[aid].pfcu.y;
+                                    // C.z = agents[aid].filter_state.x(0);
+                                    // geometry_msgs::Point D;
+                                    // D.x = C.x + cos((agents[aid].angle_z + focal_heading));
+                                    // D.y = C.y + sin((agents[aid].angle_z + focal_heading));
 
-                                    double a1 = B.y - A.y;
-                                    double b1 = A.x - B.x;
-                                    double c1 = a1*(A.x) + b1*(A.y);
+                                    // double a1 = B.y - A.y;
+                                    // double b1 = A.x - B.x;
+                                    // double c1 = a1*(A.x) + b1*(A.y);
 
-                                    double a2 = D.y - C.y;
-                                    double b2 = C.x - D.x;
-                                    double c2 = a2*(C.x) + b2*(C.y);
+                                    // double a2 = D.y - C.y;
+                                    // double b2 = C.x - D.x;
+                                    // double c2 = a2*(C.x) + b2*(C.y);
 
-                                    double det = a1*b2 - a2*b1;
+                                    // double det = a1*b2 - a2*b1;
 
-                                    geometry_msgs::Point new_int;
+                                    // geometry_msgs::Point new_int;
 
-                                    if(abs(det) < 0.0001){
-                                      ROS_ERROR("Intersection not found, det: %f", det);
-                                    } else{
-                                      ROS_INFO("Calculating new_int...");
-                                      new_int.x = (b2*c1 - b1*c2)/det;
-                                      new_int.y = (a1*c2 - a2*c1)/det;
-                                      new_int.z = (A.z + sin(Quat2Eul(nb.quat))) + (C.z + sin(Quat2Eul(agents[aid].quat)))/4.0;
-                                    }
+                                    // if(abs(det) < 0.0001){
+                                    //   ROS_ERROR("Intersection not found, det: %f", det);
+                                    // } else{
+                                    //   ROS_INFO("Calculating new_int...");
+                                    //   new_int.x = (b2*c1 - b1*c2)/det;
+                                    //   new_int.y = (a1*c2 - a2*c1)/det;
+                                    //   new_int.z = (A.z + sin(Quat2Eul(nb.quat))) + (C.z + sin(Quat2Eul(agents[aid].quat)))/4.0;
+                                    // }
 
 
                                     geometry_msgs::Point uvdar_pos_check;
-                                    uvdar_pos_check.x = new_int.x;
-                                    uvdar_pos_check.y = new_int.y;
                                     uvdar_pos_check.z = new_int.z;
                                     pub_uvdar_pos_check.publish(uvdar_pos_check);
 
-                                    double gt_dist = sqrt(pow(focal_position.x - new_int.x, 2) + pow(focal_position.y - new_int.y, 2) +
-                                                          pow(focal_position.z - new_int.z, 2));
-                                    if (abs(det) > 0.0001 && gt_dist < 5.0)
-                                    // if(gt_dist < 5.0)
+                                    // double gt_dist = sqrt(pow(focal_position.x - new_int.x, 2) + pow(focal_position.y - new_int.y, 2) +
+                                    //                       pow(focal_position.z - new_int.z, 2));
+                                    double gt_dist = sqrt(pow(focal_position.z - new_int.z,2));
+                                    // if (abs(det) > 0.0001 && gt_dist < 5.0)
+                                    if(gt_dist < 4.0)
                                     {
                                         ROS_INFO(
                                             "D: %f, h_diff: %f, gap: %f, nb_dt: %f, eb1: %f, eb2: %f, eb3: %f, ea1: %f, ea2: %f, "
@@ -718,8 +731,8 @@ namespace vertical_estimator
                                             gt_dist, hdg_diff, gap, nb_dt, nb.eigens.x, nb.eigens.y, nb.eigens.z, agents[aid].eigens.x,
                                             agents[aid].eigens.y, agents[aid].eigens.z);
 
-                                        sum_of_ints.ints.x += new_int.x;
-                                        sum_of_ints.ints.y += new_int.y;
+                                        // sum_of_ints.ints.x += new_int.x;
+                                        // sum_of_ints.ints.y += new_int.y;
                                         sum_of_ints.ints.z += new_int.z; /*calculate this correctly, not sure about current implementation*/
                                         sum_of_ints.ints_count += 1;
                                         
@@ -849,8 +862,8 @@ namespace vertical_estimator
             if (sum_of_ints.ints_count > 0.0)
 
             {
-                sum_of_ints.ints.x = sum_of_ints.ints.x / sum_of_ints.ints_count;
-                sum_of_ints.ints.y = sum_of_ints.ints.y / sum_of_ints.ints_count;
+                // sum_of_ints.ints.x = sum_of_ints.ints.x / sum_of_ints.ints_count;
+                // sum_of_ints.ints.y = sum_of_ints.ints.y / sum_of_ints.ints_count;
                 sum_of_ints.ints.z = sum_of_ints.ints.z / sum_of_ints.ints_count;
 
                 U_POS new_pose;
@@ -1101,6 +1114,8 @@ namespace vertical_estimator
         std::vector<std::string> odom_main_topics;
 
         std::vector<std::string> measured_poses_topics;
+
+        std::string filtered_poses_topics;
 
         using nb_state_callback = boost::function<void(const nav_msgs::OdometryConstPtr &)>;
         std::vector<nb_state_callback> callbacks_nb_state;

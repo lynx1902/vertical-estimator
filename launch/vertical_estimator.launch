@@ -31,13 +31,18 @@
       
       <param name="range_topic" value="/$(arg uav_name)/garmin/range"/>
 
-      <param name="range2_publish_topic" value="/$(arg uav_name)/garmin/range2"/>  
+      <param name="range2_publish_topic" value="/$(arg uav_name)/garmin/range2"/> 
+
+       <param     name="filtered_poses_topics" value="/$(arg uav_name)/uvdar/filteredPoses"/>
 
       <!-- <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R"] </rosparam> -->
       <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R"] </rosparam>
+      <!-- <rosparam param="measured_poses_topics" > ["filteredPoses"] </rosparam> -->
       <remap        from="~measured_poses_L" to="/$(arg uav_name)/uvdar/measuredPosesL"/>
       <remap        from="~measured_poses_R" to="/$(arg uav_name)/uvdar/measuredPosesR"/>
       <remap        from="~measured_poses_B" to="/$(arg uav_name)/uvdar/measuredPosesB"/>
+
+      <!-- <remap        from="~filtered_poses" to="/$(arg uav_name)/uvdar/filteredPoses"/> -->
       
       
     </node>
