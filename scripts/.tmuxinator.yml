@@ -118,7 +118,7 @@ windows:
         - export UAV_NAME=uav29; waitForControl; rosservice call /$UAV_NAME/control_manager/use_safety_area false
         - export UAV_NAME=uav30; waitForControl; rosservice call /$UAV_NAME/control_manager/use_safety_area false
         - export UAV_NAME=uav38; waitForControl; rosservice call /$UAV_NAME/control_manager/use_safety_area false
-        # - export UAV_NAME=uav39; rosservice call /$UAV_NAME/control_manager/use_safety_area falsex
+        # - export UAV_NAME=uav39; waitForControl; rosservice call /$UAV_NAME/control_manager/use_safety_area falsex
         
         # - export UAV_NAME=uav7; rosservice call /$UAV_NAME/control_manager/use_safety_area falsex
 
@@ -159,13 +159,13 @@ windows:
         - history -s rosservice call /$UAV_NAME/waypoint_flier/start_waypoints_following
         - history -s rosservice call /$UAV_NAME/waypoint_flier/stop_waypoints_following
 
-  # - plotting:
-  #     layout: tiled
-  #     panes:
-  #       - waitForOdometry; rosrun plotjuggler plotjuggler
+  - plotting:
+      layout: tiled
+      panes:
+        - waitForOdometry; rosrun plotjuggler plotjuggler
 
   - recording:
       layout: tiled
       panes:
-        - waitForOdometry; rosbag record -O uav_all_test.bag /uav29/vertical_estimator/vert_est /uav29/garmin/range /uav29/vertical_estimator/uvdar_pos_check /uav38/vertical_estimator/vert_est /uav38/garmin/range /uav38/vertical_estimator/uvdar_pos_check /uav30/vertical_estimator/vert_est /uav30/garmin/range /uav30/vertical_estimator/uvdar_pos_check
-        # - waitForOdometry; rosbag record -O uav29_uvdar_check.bag /uav29/vertical_estimator/velocity_uvdar_fcu /uav29/vertical_estimator/vert_estimator_output_fcu /uav29/vertical_estimator/uvdar_pos_check
+        - waitForOdometry; rosbag record -O uav_retest.bag /uav29/vertical_estimator/range_output /uav29/garmin/range /uav29/vertical_estimator/uvdar_pos_debug /uav29/odometry/odom_main /uav29/odometry/imu_untilted /uav29/vertical_estimator/velocity_output /uav29/vertical_estimator/uvdar_velocity /uav29/vertical_estimator/imu_velocity
+        # - waitForOdometry; rosbag record -O uav29_uvdar_check.bag /uav29/vertical_estimator/velocity_uvdar_fcu /uav29/vertical_estimator/vert_estimator_output_fcu /uav29/vertical_estimator/uvdar_pos_check      
