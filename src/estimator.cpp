@@ -668,34 +668,118 @@ namespace vertical_estimator
                                     crossProduct.z = dirAB.x * dirCD.y - dirAB.y * dirCD.x;
 
                                     double crossProductMagnitude = sqrt(crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y + crossProduct.z * crossProduct.z);
+                                    
+                                    if(crossProductMagnitude == 0){
+                                        //Skew lines so we find minimum distance between them
+                                        // distance along AB and CD where minimum distance line interesects            
+                                        double tAB = -(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z) / (crossProductMagnitude * crossProductMagnitude);
+                                        double tCD = -(dirAB.x * crossProduct.x + dirAB.y * crossProduct.y + dirAB.z * crossProduct.z) / (crossProductMagnitude * crossProductMagnitude);
+                                        
+                                        geometry_msgs::Point intersectionAB; 
+                                        intersectionAB.x = A.x + tAB * dirAB.x;
+                                        intersectionAB.y = A.y + tAB * dirAB.y;
+                                        intersectionAB.z = A.z + tAB * dirAB.z;
 
-                                    double dist = abs(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z)/(crossProductMagnitude);
+                                        geometry_msgs::Point intersectionCD;
+                                        intersectionCD.x = C.x + tCD * dirCD.x;
+                                        intersectionCD.y = C.y + tCD * dirCD.y;
+                                        intersectionCD.z = C.z + tCD * dirCD.z;
 
-                                    if(dist < 0.0){
-                                        ROS_ERROR("Method is failing");
-                                    }
-                                    else if (dist == 0.0){
-                                        double t = (L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z)/crossProductMagnitude;
-                                        double u = ((-L.x) * crossProduct.x + (-L.y) * crossProduct.y + (-L.z) * crossProduct.z)/crossProductMagnitude;
+                                        double dx = intersectionAB.x - intersectionCD.x;
+                                        double dy = intersectionAB.y - intersectionCD.y;
+                                        double dz = intersectionAB.z - intersectionCD.z;
 
-                                        if(t>=0.0 && t<=1.0 && u>=0.0 && u<=1.0){
-                                            // new_int.x = A.x + t*dirAB.x;
-                                            // new_int.y = A.y + t*dirAB.y;
-                                            new_int.z = A.z + t*dirAB.z;
+                                        double minDistance = sqrt(dx * dx + dy * dy + dz * dz);
+                                        double dist_z = minDistance * std::sqrt(1.0 - (crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y) / (crossProductMagnitude * crossProductMagnitude));
+
+                                        if(dist_z!=0){
+                                            // can write more elaborative cases
+                                            if(dirAB.z < 0.0 && dirCD.z < 0.0){
+                                                // new_int.x = (intersectionAB.x + intersectionCD.x/2.0);
+                                                // new_int.y = (intersectionAB.y + intersectionCD.y/2.0);
+                                                new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 - (dist_z/2.0);
+                                            }
+                                            else if(dirAB.z > 0.0 && dirCD.z > 0.0){
+                                                // new_int.x = (intersectionAB.x + intersectionCD.x/2.0);
+                                                // new_int.y = (intersectionAB.y + intersectionCD.y/2.0);
+                                                new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 + (dist_z/2.0);
+                                            }
+                                            else {
+                                                ROS_WARN("Opposite Slopes");
+                                                if(intersectionAB.z < intersectionCD.z){
+                                                    // new_int.x = (intersectionAB.x);
+                                                    // new_int.y = (intersectionAB.x);
+                                                    new_int.z = intersectionAB.z + (dist_z/2.0);
+                                                }
+                                                else if (intersectionCD.z < intersectionAB.z){
+                                                    new_int.z = intersectionCD.z + (dist_z/2.0);
+                                                }
+                                            }                                            
                                         }
-                                        else {
-                                            ROS_ERROR("The line segments do not intersect within their domains");
-                                        }
+
+                                    } 
+                                    else {
+                                        // Lines intersecting at a unique point
+                                        // double tAB = (dirCD.x * (C.y - A.y) + dirCD.y * (A.x - C.x)) / (dirAB.x * dirCD.y - dirAB.y * dirCD.x);
+                                        // double tCD = (dirAB.x * (A.y - C.y) + dirAB.y * (C.x - A.x)) / (dirAB.x * dirCD.y - dirAB.y * dirCD.x);
+
+                                        // double tAB = ((C.x - A.x) * dirCD.y * dirCD.z + (C.y - A.y) * dirCD.z * dirAB.x + (C.z - A.z) * dirCD.x * dirAB.y - (C.z - A.z) * dirCD.y * dirAB.x - (C.y - A.y) * dirCD.x * dirAB.z) /
+                                                        // (dirAB.x * dirCD.y * dirAB.z - dirAB.x * dirCD.z * dirAB.y + dirAB.y * dirCD.x * dirAB.z - dirAB.y * dirCD.z * dirAB.x + dirAB.z * dirCD.x * dirAB.y - dirAB.z * dirCD.y * dirAB.x);
+
+                                        // double tCD = ((C.x - A.x) * dirAB.y * dirAB.z + (C.y - A.y) * dirAB.z * dirCD.x + (C.z - A.z) * dirAB.x * dirCD.y - (C.z - A.z) * dirAB.y * dirCD.x - (C.y - A.y) * dirAB.x * dirCD.z) /
+                                                        // (dirAB.x * dirCD.y * dirAB.z - dirAB.x * dirCD.z * dirAB.y + dirAB.y * dirCD.x * dirAB.z - dirAB.y * dirCD.z * dirAB.x + dirAB.z * dirCD.x * dirAB.y - dirAB.z * dirCD.y * dirAB.x);
+
+                                        double tAB = ((C.x - A.x) * dirCD.y * dirAB.z + (C.y - A.y) * dirCD.z * dirAB.x + (C.z - A.z) * dirCD.x * dirAB.y - (C.z - A.z) * dirCD.y * dirAB.x - (C.y - A.y) * dirCD.x * dirAB.z) /
+                                                        (dirAB.x * dirCD.y * dirAB.z - dirAB.y * dirCD.x * dirAB.z + dirAB.z * dirCD.x * dirAB.y);
+
+                                        double tCD = ((C.x - A.x) * dirAB.y * dirCD.z + (C.y - A.y) * dirAB.z * dirCD.x + (C.z - A.z) * dirAB.x * dirCD.y - (C.z - A.z) * dirAB.y * dirCD.x - (C.y - A.y) * dirAB.x * dirCD.z) /
+                                                        (dirAB.x * dirCD.y * dirAB.z - dirAB.y * dirCD.x * dirAB.z + dirAB.z * dirCD.x * dirAB.y);
+
+                                        new_int.x = A.x + tAB * dirAB.x;
+                                        new_int.y = A.y + tAB * dirAB.y;
+                                        new_int.z = A.z + tAB * dirAB.z;
                                     }
-                                    else { 
-                                        // if(A.z < C.z){
-                                        // new_int.z = A.z + (dist/2.0);
-                                        // }
-                                        // else if (A.z >= C.z){
-                                        //     new_int.z = C.z + (dist/2.0);
-                                        // }
-                                        new_int.z = (A.z + C.z)/2.0 + (dist/2.0);
-                                    }
+
+                                    // double dist = abs(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z)/(crossProductMagnitude);
+
+                                    // if(dist < 0.0){
+                                    //     ROS_ERROR("Method is failing");
+                                    // }
+                                    // else if ((crossProductMagnitude*crossProductMagnitude) == 0.0){
+                                    //     // double t = ((L.x * crossProduct.x) + (L.y * crossProduct.y) + (L.z * crossProduct.z))/crossProductMagnitude;
+                                    //     // // double u = ((A.x - C.x) * crossProduct.x + (A.y - C.y) * crossProduct.y + (A.z - C.z) * crossProduct.z) / crossProductMagnitude;
+                                    //     // double u = (((-L.x) * crossProduct.x) + ((-L.y) * crossProduct.y) + ((-L.z) * crossProduct.z))/crossProductMagnitude;
+
+
+
+
+                                    //     if(tAB>=0.0 && tAB<=1.0 && tCD>=0.0 && tCD<=1.0){
+                                    //         // new_int.x = A.x + t*dirAB.x;
+                                    //         // new_int.y = A.y + t*dirAB.y;
+                                    //         new_int.z = A.z + tAB*dirAB.z;
+                                    //     }
+                                    //     else {
+                                    //         ROS_ERROR("The line segments do not intersect within their domains");
+                                    //     }
+                                    // }
+                                    // else { 
+                                    //     if(dirAB.z < 0 && dirCD.z < 0 ){
+                                            
+                                    //         new_int.z = (A.z+C.z)/2.0 - (dist/2.0);
+                                    //     }
+                                    //     else if (dirAB.z > 0 && dirCD.z > 0){
+                                    //         new_int.z = (A.z+C.z)/2.0 + (dist/2.0);
+                                    //     }
+                                    //     else {
+                                    //         if(A.z < C.z){
+                                    //             new_int.z = A.z + (dist/2.0);
+                                    //         }
+                                    //         else if (C.z < A.z){
+                                    //             new_int.z = C.z + (dist/2.0);
+                                    //         }
+                                    //     }
+                                    //     // new_int.z = (A.z + C.z)/2.0 + (dist/2.0);
+                                    // }
 
 
                                     // if (crossProductMagnitude == 0.0) {
@@ -794,9 +878,9 @@ namespace vertical_estimator
                                         //   past_spheres.push_back(new_sphere);
                                         // }
                        
-                                        // sphere.pose.position.x = nb.pfcu.x;
-                                        // sphere.pose.position.y = nb.pfcu.y;
-                                        // sphere.pose.position.z = focal_height;
+                                        // sphere.pose.position.x = new_int.x;
+                                        // sphere.pose.position.y = new_int.y;
+                                        // sphere.pose.position.z = new_int.z;
                        
                                         // sphere.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
                                         // sphere.scale.x = 0.3;
@@ -941,8 +1025,8 @@ namespace vertical_estimator
             if (sum_of_ints.ints_count > 0.0)
 
             {
-                // sum_of_ints.ints.x = sum_of_ints.ints.x / sum_of_ints.ints_count;
-                // sum_of_ints.ints.y = sum_of_ints.ints.y / sum_of_ints.ints_count;
+                sum_of_ints.ints.x = sum_of_ints.ints.x / sum_of_ints.ints_count;
+                sum_of_ints.ints.y = sum_of_ints.ints.y / sum_of_ints.ints_count;
                 sum_of_ints.ints.z = sum_of_ints.ints.z / sum_of_ints.ints_count;
 
                 U_POS new_pose;
@@ -1011,11 +1095,11 @@ namespace vertical_estimator
         }
 
         void ImuOdom(const sensor_msgs::Imu& msg){
-            double az = msg.linear_acceleration.z;
+            double az = msg.linear_acceleration.z - 9.80;
 
             double dt = (ros::Time::now() - last_imu_update).toSec();
 
-            velocity_imu_focal.z = velocity_imu_focal.z + az * dt;
+            velocity_imu_focal.z +=  az * dt;
             last_imu_update = ros::Time::now();
 
             geometry_msgs::Point imu_vel;
@@ -1077,7 +1161,7 @@ namespace vertical_estimator
 
             } else {
                 if((ros::Time::now() - last_imu_correction).toSec() > 1.0){
-                    velocity_imu_focal.z = (velocity_imu_focal.z + msg.velocity.linear.z)/2;
+                    velocity_imu_focal.z += (velocity_imu_focal.z + msg.velocity.linear.z)/2;
                     last_imu_correction = ros::Time::now();
                     last_imu_update = ros::Time::now();
                 }

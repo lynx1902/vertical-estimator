@@ -159,13 +159,13 @@ windows:
         - history -s rosservice call /$UAV_NAME/waypoint_flier/start_waypoints_following
         - history -s rosservice call /$UAV_NAME/waypoint_flier/stop_waypoints_following
 
-  - plotting:
-      layout: tiled
-      panes:
-        - waitForOdometry; rosrun plotjuggler plotjuggler
+  # - plotting:
+  #     layout: tiled
+  #     panes:
+  #       - waitForOdometry; rosrun plotjuggler plotjuggler
 
   - recording:
       layout: tiled
       panes:
-        - waitForOdometry; rosbag record -O uav_retest.bag /uav29/vertical_estimator/range_output /uav29/garmin/range /uav29/vertical_estimator/uvdar_pos_debug /uav29/odometry/odom_main /uav29/odometry/imu_untilted /uav29/vertical_estimator/velocity_output /uav29/vertical_estimator/uvdar_velocity /uav29/vertical_estimator/imu_velocity
+        - waitForOdometry; rosbag record -O uav_retest.bag /uav29/vertical_estimator/range_output /uav29/garmin/range /uav29/vertical_estimator/uvdar_pos_debug /uav29/odometry/odom_main /uav29/odometry/imu_untilted /uav29/vertical_estimator/velocity_output /uav29/vertical_estimator/uvdar_velocity /uav29/vertical_estimator/imu_velocity /uav29/odometry/ground_truth
         # - waitForOdometry; rosbag record -O uav29_uvdar_check.bag /uav29/vertical_estimator/velocity_uvdar_fcu /uav29/vertical_estimator/vert_estimator_output_fcu /uav29/vertical_estimator/uvdar_pos_check      
