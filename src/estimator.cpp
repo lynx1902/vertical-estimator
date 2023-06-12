@@ -669,31 +669,67 @@ namespace vertical_estimator
 
                                     double crossProductMagnitude = sqrt(crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y + crossProduct.z * crossProduct.z);
                                     
-                                    if(crossProductMagnitude == 0){
-                                        //Skew lines so we find minimum distance between them
-                                        // distance along AB and CD where minimum distance line interesects            
-                                        double tAB = -(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z) / (crossProductMagnitude * crossProductMagnitude);
-                                        double tCD = -(dirAB.x * crossProduct.x + dirAB.y * crossProduct.y + dirAB.z * crossProduct.z) / (crossProductMagnitude * crossProductMagnitude);
+                                    if(crossProductMagnitude > 1e-6){
+                                        // Non zero cross product magnitude indicates skew lines or intersecting lines
+                                        // Handle those cases here
+                                            
+                                        // double checkSkewOrIntersect = std::abs((L.x * dirCD.y - L.y * dirCD.x) + (L.x * dirCD.z - L.z * dirCD.x) + (L.y * dirCD.z - L.z * dirCD.y));
                                         
-                                        geometry_msgs::Point intersectionAB; 
-                                        intersectionAB.x = A.x + tAB * dirAB.x;
-                                        intersectionAB.y = A.y + tAB * dirAB.y;
-                                        intersectionAB.z = A.z + tAB * dirAB.z;
+                                        // based on the source: https://www.quora.com/How-do-you-know-if-lines-are-parallel-skew-or-intersecting
+                                        double checkSkewOrIntersect = abs(L.x * crossProduct.x + L.y * crossProduct.y * L.z * crossProduct.z);
+                                        
+                                        // double tABnum = (L.y * dirCD.x)*(L.y * dirCD.x) + (L.x * dirCD.x)*(L.x * dirCD.x);
 
-                                        geometry_msgs::Point intersectionCD;
-                                        intersectionCD.x = C.x + tCD * dirCD.x;
-                                        intersectionCD.y = C.y + tCD * dirCD.y;
-                                        intersectionCD.z = C.z + tCD * dirCD.z;
+                                        // double tAB = sqrt(tABnum)/crossProductMagnitude;
+                                        geometry_msgs::Point crossLanddirCD;
+                                        crossLanddirCD.x = L.y * dirCD.z - L.z * dirCD.y;
+                                        crossLanddirCD.y = L.z * dirCD.x - L.x * dirCD.z;
+                                        crossLanddirCD.z = L.x * dirCD.y - L.y * dirCD.x;
 
-                                        double dx = intersectionAB.x - intersectionCD.x;
-                                        double dy = intersectionAB.y - intersectionCD.y;
-                                        double dz = intersectionAB.z - intersectionCD.z;
+                                        geometry_msgs::Point crossLanddirAB;
+                                        crossLanddirAB.x = L.y * dirAB.z - L.z * dirAB.y;  
+                                        crossLanddirAB.y = L.z * dirAB.x - L.x * dirAB.z;
+                                        crossLanddirAB.z = L.x * dirAB.y - L.y * dirAB.x;    
 
-                                        double minDistance = sqrt(dx * dx + dy * dy + dz * dz);
-                                        double dist_z = minDistance * std::sqrt(1.0 - (crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y) / (crossProductMagnitude * crossProductMagnitude));
+                                        // double tAB = (crossLanddirCD.x * crossProduct.x + crossLanddirCD.y * crossProduct.y + crossLanddirCD.z * crossProduct.z)/(dirAB.x * crossProduct.x + dirAB.y * crossProduct.y + dirAB.z * crossProduct.z);
+                                        // double tCD = (crossLanddirAB.x * crossProduct.x + crossLanddirAB.y * crossProduct.y + crossLanddirAB.z * crossProduct.z)/(dirCD.x * crossProduct.x + dirCD.y * crossProduct.y + dirCD.z * crossProduct.z);
 
-                                        if(dist_z!=0){
+                                        // double tAB = ((C.y - A.y) * dirCD.x - (C.x - A.x) * dirCD.y) / (dirAB.x * dirCD.y - dirAB.y * dirCD.x);
+                                        // double tCD = ((A.y - C.y) * dirAB.x - (A.x - C.x) * dirAB.y) / (dirCD.x * dirAB.y - dirCD.y * dirAB.x);
+
+                                        double tAB = ((C.x - A.x) * dirCD.y - (C.y - A.y) * dirCD.x + (C.z - A.z) * dirCD.z) / (dirAB.x * dirCD.y - dirAB.y * dirCD.x + dirAB.z * dirCD.z);
+                                        double tCD = ((A.x - C.x) * dirAB.y - (A.y - C.y) * dirAB.x + (A.z - C.z) * dirAB.z) / (dirCD.x * dirAB.y - dirCD.y * dirAB.x + dirCD.z * dirAB.z);
+
+                                        // double tAB = ((C.x - A.x) * crossProduct.y - (C.y - A.y) * crossProduct.x) / crossProductMagnitude;
+                                        // double tCD = ((A.x - C.x) * crossProduct.z - (A.z - C.z) * crossProduct.x) / crossProductMagnitude;
+
+                                        if(checkSkewOrIntersect > 1e-6){
+                                            // Skew lines
+                                            geometry_msgs::Point intersectionAB; 
+                                            intersectionAB.x = A.x + tAB * dirAB.x;
+                                            intersectionAB.y = A.y + tAB * dirAB.y;
+                                            intersectionAB.z = A.z + tAB * dirAB.z;
+
+                                            geometry_msgs::Point intersectionCD;
+                                            intersectionCD.x = C.x + tCD * dirCD.x;
+                                            intersectionCD.y = C.y + tCD * dirCD.y;
+                                            intersectionCD.z = C.z + tCD * dirCD.z;
+
+                                            // double dx = intersectionAB.x - intersectionCD.x;
+                                            // double dy = intersectionAB.y - intersectionCD.y;
+                                            // double dz = intersectionAB.z - intersectionCD.z;
+
+                                            // double minDistance = sqrt(dx * dx + dy * dy + dz * dz);
+
+                                            // based on this source: https://www.quora.com/How-do-I-find-the-shortest-distance-between-two-skew-lines
+                                            double minDistance = abs(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z)/(crossProductMagnitude);
+
+                                            double dist_z = minDistance * sqrt(1.0 - (crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y) / (crossProductMagnitude * crossProductMagnitude));
+                                            // double dist_z = abs(dz);
+
+                                            if(dist_z > 0.0){
                                             // can write more elaborative cases
+                                            // new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 + (dist_z/2.0);
                                             if(dirAB.z < 0.0 && dirCD.z < 0.0){
                                                 // new_int.x = (intersectionAB.x + intersectionCD.x/2.0);
                                                 // new_int.y = (intersectionAB.y + intersectionCD.y/2.0);
@@ -707,37 +743,71 @@ namespace vertical_estimator
                                             else {
                                                 ROS_WARN("Opposite Slopes");
                                                 if(intersectionAB.z < intersectionCD.z){
-                                                    // new_int.x = (intersectionAB.x);
-                                                    // new_int.y = (intersectionAB.x);
                                                     new_int.z = intersectionAB.z + (dist_z/2.0);
                                                 }
                                                 else if (intersectionCD.z < intersectionAB.z){
                                                     new_int.z = intersectionCD.z + (dist_z/2.0);
                                                 }
                                             }                                            
+                                            }
+
                                         }
+                                        else {
+                                            // Intersecting lines
+
+                                            double k = crossProductMagnitude;
+                                            geometry_msgs::Point crossdirCDandL;
+                                            crossdirCDandL.x = dirCD.y * L.z - dirCD.z * L.y;
+                                            crossdirCDandL.y = dirCD.z * L.x - dirCD.x * L.z;
+                                            crossdirCDandL.z = dirCD.x * L.y - dirCD.y * L.x;
+
+                                            double h = sqrt(crossdirCDandL.x * crossdirCDandL.x + crossdirCDandL.y * crossdirCDandL.y + crossdirCDandL.z * crossdirCDandL.z);
+
+                                            if((crossdirCDandL.x * crossProduct.x + crossdirCDandL.y * crossProduct.y + crossdirCDandL.z * crossProduct.z) > 0){
+                                                new_int.z =  A.z + (h/k) * dirAB.z;
+                                            } else {
+                                                new_int.z = A.z - (h/k) * dirAB.z;
+                                            }
+                                            
+                                            
+                                        }
+                                        
+                                        
+                                        
+                                        // double tAB = -(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z) / (crossProductMagnitude * crossProductMagnitude);
+                                        // double tCD = -(dirAB.x * crossProduct.x + dirAB.y * crossProduct.y + dirAB.z * crossProduct.z) / (crossProductMagnitude * crossProductMagnitude);
+                                        
+                                        
+                                        // double dist_z = minDistance * std::sqrt(1.0 - (crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y) / (crossProductMagnitude * crossProductMagnitude));
+
+                                        
 
                                     } 
                                     else {
-                                        // Lines intersecting at a unique point
+                                        // Parallel or coincident lines
+                                        // Handle that case here
+
+                                        ROS_ERROR("Parallel Lines!!");
+
+                                        // // Lines intersecting at a unique point
                                         // double tAB = (dirCD.x * (C.y - A.y) + dirCD.y * (A.x - C.x)) / (dirAB.x * dirCD.y - dirAB.y * dirCD.x);
                                         // double tCD = (dirAB.x * (A.y - C.y) + dirAB.y * (C.x - A.x)) / (dirAB.x * dirCD.y - dirAB.y * dirCD.x);
 
-                                        // double tAB = ((C.x - A.x) * dirCD.y * dirCD.z + (C.y - A.y) * dirCD.z * dirAB.x + (C.z - A.z) * dirCD.x * dirAB.y - (C.z - A.z) * dirCD.y * dirAB.x - (C.y - A.y) * dirCD.x * dirAB.z) /
-                                                        // (dirAB.x * dirCD.y * dirAB.z - dirAB.x * dirCD.z * dirAB.y + dirAB.y * dirCD.x * dirAB.z - dirAB.y * dirCD.z * dirAB.x + dirAB.z * dirCD.x * dirAB.y - dirAB.z * dirCD.y * dirAB.x);
+                                        // // double tAB = ((C.x - A.x) * dirCD.y * dirCD.z + (C.y - A.y) * dirCD.z * dirAB.x + (C.z - A.z) * dirCD.x * dirAB.y - (C.z - A.z) * dirCD.y * dirAB.x - (C.y - A.y) * dirCD.x * dirAB.z) /
+                                        //                 // (dirAB.x * dirCD.y * dirAB.z - dirAB.x * dirCD.z * dirAB.y + dirAB.y * dirCD.x * dirAB.z - dirAB.y * dirCD.z * dirAB.x + dirAB.z * dirCD.x * dirAB.y - dirAB.z * dirCD.y * dirAB.x);
 
-                                        // double tCD = ((C.x - A.x) * dirAB.y * dirAB.z + (C.y - A.y) * dirAB.z * dirCD.x + (C.z - A.z) * dirAB.x * dirCD.y - (C.z - A.z) * dirAB.y * dirCD.x - (C.y - A.y) * dirAB.x * dirCD.z) /
-                                                        // (dirAB.x * dirCD.y * dirAB.z - dirAB.x * dirCD.z * dirAB.y + dirAB.y * dirCD.x * dirAB.z - dirAB.y * dirCD.z * dirAB.x + dirAB.z * dirCD.x * dirAB.y - dirAB.z * dirCD.y * dirAB.x);
+                                        // // double tCD = ((C.x - A.x) * dirAB.y * dirAB.z + (C.y - A.y) * dirAB.z * dirCD.x + (C.z - A.z) * dirAB.x * dirCD.y - (C.z - A.z) * dirAB.y * dirCD.x - (C.y - A.y) * dirAB.x * dirCD.z) /
+                                        //                 // (dirAB.x * dirCD.y * dirAB.z - dirAB.x * dirCD.z * dirAB.y + dirAB.y * dirCD.x * dirAB.z - dirAB.y * dirCD.z * dirAB.x + dirAB.z * dirCD.x * dirAB.y - dirAB.z * dirCD.y * dirAB.x);
 
-                                        double tAB = ((C.x - A.x) * dirCD.y * dirAB.z + (C.y - A.y) * dirCD.z * dirAB.x + (C.z - A.z) * dirCD.x * dirAB.y - (C.z - A.z) * dirCD.y * dirAB.x - (C.y - A.y) * dirCD.x * dirAB.z) /
-                                                        (dirAB.x * dirCD.y * dirAB.z - dirAB.y * dirCD.x * dirAB.z + dirAB.z * dirCD.x * dirAB.y);
+                                        // // double tAB = ((C.x - A.x) * dirCD.y * dirAB.z + (C.y - A.y) * dirCD.z * dirAB.x + (C.z - A.z) * dirCD.x * dirAB.y - (C.z - A.z) * dirCD.y * dirAB.x - (C.y - A.y) * dirCD.x * dirAB.z) /
+                                        //                 // (dirAB.x * dirCD.y * dirAB.z - dirAB.y * dirCD.x * dirAB.z + dirAB.z * dirCD.x * dirAB.y);
 
-                                        double tCD = ((C.x - A.x) * dirAB.y * dirCD.z + (C.y - A.y) * dirAB.z * dirCD.x + (C.z - A.z) * dirAB.x * dirCD.y - (C.z - A.z) * dirAB.y * dirCD.x - (C.y - A.y) * dirAB.x * dirCD.z) /
-                                                        (dirAB.x * dirCD.y * dirAB.z - dirAB.y * dirCD.x * dirAB.z + dirAB.z * dirCD.x * dirAB.y);
+                                        // // double tCD = ((C.x - A.x) * dirAB.y * dirCD.z + (C.y - A.y) * dirAB.z * dirCD.x + (C.z - A.z) * dirAB.x * dirCD.y - (C.z - A.z) * dirAB.y * dirCD.x - (C.y - A.y) * dirAB.x * dirCD.z) /
+                                        //                 // (dirAB.x * dirCD.y * dirAB.z - dirAB.y * dirCD.x * dirAB.z + dirAB.z * dirCD.x * dirAB.y);
 
-                                        new_int.x = A.x + tAB * dirAB.x;
-                                        new_int.y = A.y + tAB * dirAB.y;
-                                        new_int.z = A.z + tAB * dirAB.z;
+                                        // new_int.x = A.x + tAB * dirAB.x;
+                                        // new_int.y = A.y + tAB * dirAB.y;
+                                        // new_int.z = A.z + tAB * dirAB.z;
                                     }
 
                                     // double dist = abs(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z)/(crossProductMagnitude);
@@ -745,96 +815,41 @@ namespace vertical_estimator
                                     // if(dist < 0.0){
                                     //     ROS_ERROR("Method is failing");
                                     // }
-                                    // else if ((crossProductMagnitude*crossProductMagnitude) == 0.0){
-                                    //     // double t = ((L.x * crossProduct.x) + (L.y * crossProduct.y) + (L.z * crossProduct.z))/crossProductMagnitude;
+                                    // else if ((dist) == 0.0){
+                                    //     double t = ((L.x * crossProduct.x) + (L.y * crossProduct.y) + (L.z * crossProduct.z))/crossProductMagnitude;
                                     //     // // double u = ((A.x - C.x) * crossProduct.x + (A.y - C.y) * crossProduct.y + (A.z - C.z) * crossProduct.z) / crossProductMagnitude;
-                                    //     // double u = (((-L.x) * crossProduct.x) + ((-L.y) * crossProduct.y) + ((-L.z) * crossProduct.z))/crossProductMagnitude;
+                                    //     double u = (((-L.x) * crossProduct.x) + ((-L.y) * crossProduct.y) + ((-L.z) * crossProduct.z))/crossProductMagnitude;
 
 
 
 
-                                    //     if(tAB>=0.0 && tAB<=1.0 && tCD>=0.0 && tCD<=1.0){
+                                    //     if(t>=0.0 && t<=1.0 && u>=0.0 && u<=1.0){
                                     //         // new_int.x = A.x + t*dirAB.x;
                                     //         // new_int.y = A.y + t*dirAB.y;
-                                    //         new_int.z = A.z + tAB*dirAB.z;
+                                    //         new_int.z = A.z + t*dirAB.z;
                                     //     }
                                     //     else {
                                     //         ROS_ERROR("The line segments do not intersect within their domains");
                                     //     }
                                     // }
                                     // else { 
-                                    //     if(dirAB.z < 0 && dirCD.z < 0 ){
+                                    //     // if(dirAB.z < 0 && dirCD.z < 0 ){
                                             
-                                    //         new_int.z = (A.z+C.z)/2.0 - (dist/2.0);
-                                    //     }
-                                    //     else if (dirAB.z > 0 && dirCD.z > 0){
-                                    //         new_int.z = (A.z+C.z)/2.0 + (dist/2.0);
-                                    //     }
-                                    //     else {
-                                    //         if(A.z < C.z){
-                                    //             new_int.z = A.z + (dist/2.0);
-                                    //         }
-                                    //         else if (C.z < A.z){
-                                    //             new_int.z = C.z + (dist/2.0);
-                                    //         }
-                                    //     }
-                                    //     // new_int.z = (A.z + C.z)/2.0 + (dist/2.0);
+                                    //     //     new_int.z = (A.z+C.z)/2.0 - (dist/2.0);
+                                    //     // }
+                                    //     // else if (dirAB.z > 0 && dirCD.z > 0){
+                                    //     //     new_int.z = (A.z+C.z)/2.0 + (dist/2.0);
+                                    //     // }
+                                    //     // else {
+                                    //     //     if(A.z < C.z){
+                                    //     //         new_int.z = A.z + (dist/2.0);
+                                    //     //     }
+                                    //     //     else if (C.z < A.z){
+                                    //     //         new_int.z = C.z + (dist/2.0);
+                                    //     //     }
+                                    //     // }
+                                    //     new_int.z = (A.z + C.z)/2.0 + (dist/2.0);
                                     // }
-
-
-                                    // if (crossProductMagnitude == 0.0) {
-                                    //     ROS_ERROR("The line segments AB and CD are parallel. They do not intersect.");
-    
-                                    // }
-
-                                    // double t = ((C.x - A.x) * crossProduct.x + (C.y - A.y) * crossProduct.y + (C.z - A.z) * crossProduct.z) / crossProductMagnitude;
-                                    // double u = ((A.x - C.x) * crossProduct.x + (A.y - C.y) * crossProduct.y + (A.z - C.z) * crossProduct.z) / crossProductMagnitude;
-    
-                                    //  // Check if the line segments intersect within their domains
-                                    // if (t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0) {
-                                    //     new_int.x = A.x + t * dirAB.x;
-                                    //     new_int.y = A.y + t * dirAB.y;
-                                    //     new_int.z = A.z + t * dirAB.z;
-                                    // } else {
-                                    //     ROS_ERROR("The line segments AB and CD do not intersect within their domains.");
-                                    // }
-                                    
-                                    // geometry_msgs::Point A;
-                                    // A.x = nb.pfcu.x;
-                                    // A.y = nb.pfcu.y;
-                                    // A.z = nb.filter_state.x(0);
-                                    // geometry_msgs::Point B;
-                                    // B.x = A.x + cos((nb_hdg + focal_heading));
-                                    // B.y = A.y + sin((nb_hdg + focal_heading));
-                                    // geometry_msgs::Point C;
-                                    // C.x = agents[aid].pfcu.x;
-                                    // C.y = agents[aid].pfcu.y;
-                                    // C.z = agents[aid].filter_state.x(0);
-                                    // geometry_msgs::Point D;
-                                    // D.x = C.x + cos((agents[aid].angle_z + focal_heading));
-                                    // D.y = C.y + sin((agents[aid].angle_z + focal_heading));
-
-                                    // double a1 = B.y - A.y;
-                                    // double b1 = A.x - B.x;
-                                    // double c1 = a1*(A.x) + b1*(A.y);
-
-                                    // double a2 = D.y - C.y;
-                                    // double b2 = C.x - D.x;
-                                    // double c2 = a2*(C.x) + b2*(C.y);
-
-                                    // double det = a1*b2 - a2*b1;
-
-                                    // geometry_msgs::Point new_int;
-
-                                    // if(abs(det) < 0.0001){
-                                    //   ROS_ERROR("Intersection not found, det: %f", det);
-                                    // } else{
-                                    //   ROS_INFO("Calculating new_int...");
-                                    //   new_int.x = (b2*c1 - b1*c2)/det;
-                                    //   new_int.y = (a1*c2 - a2*c1)/det;
-                                    //   new_int.z = (A.z + sin(Quat2Eul(nb.quat))) + (C.z + sin(Quat2Eul(agents[aid].quat)))/4.0;
-                                    // }
-
 
                                     geometry_msgs::Point uvdar_pos_debug;
                                     uvdar_pos_debug.z = new_int.z;
@@ -844,7 +859,7 @@ namespace vertical_estimator
                                     //                       pow(focal_position.z - new_int.z, 2));
                                     double gt_dist = sqrt(pow(focal_position.z - new_int.z,2));
                                     // if (abs(det) > 0.0001 && gt_dist < 5.0)
-                                    if(gt_dist < 4.0)
+                                    if(gt_dist < 5.0)
                                     {
                                         ROS_INFO(
                                             "D: %f, h_diff: %f, gap: %f, nb_dt: %f, eb1: %f, eb2: %f, eb3: %f, ea1: %f, ea2: %f, "
@@ -1095,61 +1110,67 @@ namespace vertical_estimator
         }
 
         void ImuOdom(const sensor_msgs::Imu& msg){
-            double az = msg.linear_acceleration.z - 9.80;
+            double az_raw = msg.linear_acceleration.z;
+
+            double az_linear = az_raw - 9.58;
 
             double dt = (ros::Time::now() - last_imu_update).toSec();
 
-            velocity_imu_focal.z +=  az * dt;
+            velocity_imu_focal.z +=  az_linear * dt;
+            if(az_raw > 9.75 && az_raw < 9.85){
+                velocity_imu_focal.z = 0.0;
+            }
             last_imu_update = ros::Time::now();
 
             geometry_msgs::Point imu_vel;
+            imu_vel.y = az_linear;
             imu_vel.z = velocity_imu_focal.z;
             pub_velocity_imu.publish(imu_vel);
 
 
-            // if((ros::Time::now() - last_imu_correction).toSec() > 0.1 && (ros::Time::now() - last_imu_meas).toSec() > 0.25){
-            //     if(filter_init_focal){
-            //         try {
-            //             filter->H = H_n(Ve);
+            if((ros::Time::now() - last_imu_correction).toSec() > 0.1 && (ros::Time::now() - last_imu_meas).toSec() > 0.25){
+                if(filter_init_focal){
+                    try {
+                        filter->H = H_n(Ve);
 
-            //             R_t R;
+                        R_t R;
 
-            //             R = Eigen::MatrixXd::Identity(1,1) * 1.0;
-            //             Eigen::VectorXd z(1);
-            //             z(0) = velocity_imu_focal.z;
-            //             filter_state_focal = filter->correct(filter_state_focal, z, R);
-            //             last_meas_focal = ros::Time::now();
-            //             last_imu_meas = ros::Time::now();
-            //         }
-            //         catch ([[maybe_unused]] std::exception e){
-            //             ROS_ERROR("LKF failed: %s", e.what());
-            //         }
-            //     }
-            // }
-            // if(filter_init_focal){
-            //     if(!velocity_imuac_initialized){
-            //         last_imuac_meas = ros::Time::now();
-            //         velocity_imuac_initialized = true;
-            //     }
-            //     else {
-            //         if((ros::Time::now() - last_imuac_meas).toSec() > 0.05){
-            //             try {
-            //                 filter->H = H_n(Ac);
+                        R = Eigen::MatrixXd::Identity(1,1) * 1.0;
+                        Eigen::VectorXd z(1);
+                        z(0) = velocity_imu_focal.z;
+                        filter_state_focal = filter->correct(filter_state_focal, z, R);
+                        last_meas_focal = ros::Time::now();
+                        last_imu_meas = ros::Time::now();
+                    }
+                    catch ([[maybe_unused]] std::exception e){
+                        ROS_ERROR("LKF failed: %s", e.what());
+                    }
+                }
+            }
+            if(filter_init_focal){
+                if(!velocity_imuac_initialized){
+                    last_imuac_meas = ros::Time::now();
+                    velocity_imuac_initialized = true;
+                }
+                else {
+                    if((ros::Time::now() - last_imuac_meas).toSec() > 0.05){
+                        try {
+                            filter->H = H_n(Ac);
 
-            //                 R_t R;
-            //                 R = Eigen::MatrixXd::Identity(1,1) * 1.0;
-            //                 Eigen::VectorXd z(1);
-            //                 z(0) = az;
-            //                 filter_state_focal = filter->correct(filter_state_focal, z, R);
-            //                 last_meas_focal = ros::Time::now();
-            //                 last_imuac_meas = ros::Time::now();
-            //             }
-            //             catch ([[maybe_unused]] std::exception e){
-            //                 ROS_ERROR("LKF failed: %s", e.what());
-            //             }
-            //         }
-            //     }
-            // }
+                            R_t R;
+                            R = Eigen::MatrixXd::Identity(1,1) * 1.0;
+                            Eigen::VectorXd z(1);
+                            z(0) = az_linear;
+                            filter_state_focal = filter->correct(filter_state_focal, z, R);
+                            last_meas_focal = ros::Time::now();
+                            last_imuac_meas = ros::Time::now();
+                        }
+                        catch ([[maybe_unused]] std::exception e){
+                            ROS_ERROR("LKF failed: %s", e.what());
+                        }
+                    }
+                }
+            }
         }
         
         void StateOdom(const mrs_msgs::UavState& msg){
