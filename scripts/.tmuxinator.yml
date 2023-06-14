@@ -1,6 +1,6 @@
 name: simulation
 root: ./
-startup_window: gazebo
+startup_window: recording
 pre_window: export UAV_NAME=uav29; export RUN_TYPE=simulation; export ODOMETRY_TYPE=gps; export UAV_TYPE=x500; export WORLD_NAME=simulation; export SENSORS="garmin_down"
 windows:
   - roscore:
@@ -83,8 +83,8 @@ windows:
       layout: tiled
       panes:
         - export UAV_NAME=uav29; waitForOdometry; roslaunch my_code vertical_estimator.launch
-        - export UAV_NAME=uav30; waitForOdometry; roslaunch my_code vertical_estimator.launch
-        - export UAV_NAME=uav38; waitForOdometry; roslaunch my_code vertical_estimator.launch
+        # - export UAV_NAME=uav30; waitForOdometry; roslaunch my_code vertical_estimator.launch
+        # - export UAV_NAME=uav38; waitForOdometry; roslaunch my_code vertical_estimator.launch
         # - export UAV_NAME=uav39; waitForOdometry; roslaunch my_code vertical_estimator.launch
   
   
@@ -130,9 +130,9 @@ windows:
   - slow_down:
       layout: even-vertical
       panes:
-        - waitForSimulation; waitForRos; sleep 15; gz physics -u 30
-        - waitForSimulation; waitForRos; sleep 20; gz physics -u 30
-        - waitForSimulation; waitForRos; sleep 25; gz physics -u 30
+        - waitForSimulation; waitForRos; sleep 15; gz physics -u 50
+        - waitForSimulation; waitForRos; sleep 20; gz physics -u 50
+        - waitForSimulation; waitForRos; sleep 25; gz physics -u 50
   # - rqt_graph:
   #     layout: tiled
   #     panes:
@@ -169,4 +169,27 @@ windows:
       panes:
         # - waitForOdometry; rosbag record -O uav_impdebug.bag /uav29/vertical_estimator/range_output /uav29/garmin/range /uav29/vertical_estimator/uvdar_pos_debug /uav29/odometry/odom_main /uav29/odometry/imu_untilted /uav29/vertical_estimator/velocity_output /uav29/vertical_estimator/uvdar_velocity /uav29/vertical_estimator/imu_velocity /uav29/odometry/ground_truth
         # - waitForOdometry; rosbag record -O uav29_uvdar_check.bag /uav29/vertical_estimator/velocity_uvdar_fcu /uav29/vertical_estimator/vert_estimator_output_fcu /uav29/vertical_estimator/uvdar_pos_check      
-        - waitForOdometry; rosbag record -O uav_alldebug.bag /uav29/vertical_estimator/range_output /uav29/odometry/odom_main /uav30/vertical_estimator/range_output /uav30/odometry/odom_main /uav38/vertical_estimator/range_output /uav38/odometry/odom_main /uav39/odometry/odom_main /uav39/vertical_estimator/range_output
+        # - waitForOdometry; rosbag record -O uav_alldebug.bag /uav29/vertical_estimator/range_output /uav29/odometry/odom_main /uav29/vertical_estimator/ /uav30/vertical_estimator/range_output /uav30/odometry/odom_main /uav38/vertical_estimator/range_output /uav38/odometry/odom_main /uav39/odometry/odom_main /uav39/vertical_estimator/range_output
+        - waitForOdometry; rosbag record -O jun14_debug.bag
+          /uav29/vertical_estimator/range_output 
+          /uav29/vertical_estimator/uvdar_velocity 
+          /uav29/vertical_estimator/imu_velocity 
+          /uav29/vertical_estimator/uvdar_pos_debug 
+          /uav29/vertical_estimator/velocity_output 
+          /uav29/odometry/odom_main 
+          /uav29/odometry/imu_untilted 
+          /uav30/vertical_estimator/range_output 
+          /uav30/vertical_estimator/uvdar_velocity 
+          /uav30/vertical_estimator/imu_velocity 
+          /uav30/vertical_estimator/uvdar_pos_debug 
+          /uav30/vertical_estimator/velocity_output 
+          /uav30/odometry/odom_main 
+          /uav30/odometry/imu_untilted 
+          /uav38/vertical_estimator/range_output 
+          /uav38/vertical_estimator/uvdar_velocity 
+          /uav38/vertical_estimator/imu_velocity 
+          /uav38/vertical_estimator/uvdar_pos_debug 
+          /uav38/vertical_estimator/velocity_output 
+          /uav38/odometry/odom_main 
+          /uav38/odometry/imu_untilted 
+          
