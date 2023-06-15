@@ -38,6 +38,8 @@ namespace mrs_lib
     const int n_inputs = 1;
     const int n_measurements = 1;
     using lkf_t = LKF<n_states, n_inputs, n_measurements>;
+
+    using nblkf_t = LKF<6,1,6>;
 } // namespace mrs_lib
 
 using A_t = mrs_lib::lkf_t::A_t;
@@ -51,6 +53,20 @@ using P_t = mrs_lib::lkf_t::P_t;
 using R_t = mrs_lib::lkf_t::R_t;
 
 using statecov_t = mrs_lib::lkf_t::statecov_t;
+
+using nblkf_t = mrs_lib::LKF<6,1,6>;
+
+using nbA_t = mrs_lib::nblkf_t::A_t;
+using nbB_t = mrs_lib::nblkf_t::A_t;
+using nbH_t = mrs_lib::nblkf_t::H_t;
+using nbQ_t = mrs_lib::nblkf_t::Q_t;
+using nbu_t = mrs_lib::nblkf_t::u_t;
+
+using nbx_t = mrs_lib::nblkf_t::x_t;
+using nbP_t = mrs_lib::nblkf_t::P_t;
+using nbR_t = mrs_lib::nblkf_t::R_t;
+
+using nbstatecov_t = mrs_lib::nblkf_t::statecov_t;
 //}
 
 namespace vertical_estimator
@@ -266,8 +282,43 @@ namespace vertical_estimator
                 0, 1.0, 0,
                 0, 0, 1.0;
 
+            nbA.resize(6,6);
+            nbB.resize(6,1);
+            nbH.resize(6,6);
+            nbQq.resize(6,6);
+
+            nbA << 1, def_dt, 0, 0, 0, 0,
+                0, 1, 0, 0, 0, 0,
+                0, 0, 1, def_dt, 0, 0,
+                0, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 1, def_dt,
+                0, 0, 0, 0, 0, 1;
+
+            nbB << 1,
+                0,
+                0,
+                0,
+                0,
+                0;
+
+            nbH << 1, 0, 0, 0, 0, 0,
+                0, 1, 0, 0, 0, 0,
+                0, 0, 1, 0, 0, 0,
+                0, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 1, 0,
+                0, 0, 0, 0, 0, 1;
+
+            nbQq << 1.0, 0, 0, 0, 0, 0,
+                0, 1.0, 0, 0, 0, 0,
+                0, 0, 1.0, 0, 0, 0,
+                0, 0, 0, 1.0, 0, 0,
+                0, 0, 0, 0, 1.0, 0,
+                0, 0, 0, 0, 0, 1.0;
+
             /* what is std::make_unique*/
             filter = std::make_unique<mrs_lib::lkf_t>(A, B, H);
+
+            neighbor_filter = std::make_unique<mrs_lib::nblkf_t>(nbA, nbB, nbH);
 
             last_imu_meas = ros::Time::now();
 
@@ -417,6 +468,21 @@ namespace vertical_estimator
             return H;
         }
 
+        nbA_t nbA_dt(double dt)
+        {
+            nbA << 1, dt, 0, 0, 0, 0,
+                0, 1, 0, 0, 0, 0,
+                0, 0, 1, dt, 0, 0,
+                0, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 1, dt,
+                0, 0, 0, 0, 0, 1;
+                return nbA;
+        }
+
+
+
+
+
         //}
 
         /* Covariance to eigen method //{ */
@@ -467,31 +533,68 @@ namespace vertical_estimator
                 return;
             }
 
-            u_t u = u_t::Zero();
+            // u_t u = u_t::Zero();
+
+            nbu_t nbu = nbu_t::Zero();
 
             double new_dt = std::fmax(std::fmin(std::fmin((ros::Time::now()-agents[nb_index].last_updt).toSec(), (ros::Time::now()-agents[nb_index].last_meas_u).toSec()), (ros::Time::now()-agents[nb_index].last_meas_s).toSec()),0.0);
-            filter->A = A_dt(new_dt);
-            agents[nb_index].filter_state = filter->predict(agents[nb_index].filter_state, u, Qq, new_dt);
-            if (filter_state_focal.x(0) < 0.0)
-            {
-                ROS_ERROR("Filter error on line 477");
-            }
-            agents[nb_index].last_updt = ros::Time::now();
+            // filter->A = A_dt(new_dt);
+
+            // New updated filter
+            neighbor_filter->A = nbA_dt(new_dt);
+
+            agents[nb_index].nb_filter_state = neighbor_filter->predict(agents[nb_index].nb_filter_state, nbu, nbQq, new_dt);
+
+            agents[nb_index].last_updt = ros::Time::now();    
+
+
+
+            // agents[nb_index].filter_state = filter->predict(agents[nb_index].filter_state, u, Qq, new_dt);
+            // if (filter_state_focal.x(0) < 0.0)
+            // {
+                // ROS_ERROR("Filter error on line 477");
+            // }
+            // agents[nb_index].last_updt = ros::Time::now();
+
+
+
+            // try
+            // {
+            //     filter->H = H_n(Ve);
+            //     R_t R;
+            //     R = Eigen::MatrixXd::Identity(1, 1) * 1;
+            //     Eigen::VectorXd z(1);
+
+            //     z(0) = odom_msg->twist.twist.linear.z;
+
+            //     agents[nb_index].filter_state = filter->correct(agents[nb_index].filter_state, z, R);
+            //     if (filter_state_focal.x(0) < 0.0)
+            //     {
+            //         ROS_ERROR("Filter error on line 493");
+            //     }
+            //     agents[nb_index].last_meas_s = ros::Time::now();
+            // }
+            // catch ([[maybe_unused]] std::exception e)
+            // {
+            //     ROS_ERROR("LKF failed: %s", e.what());
+            // }
 
             try
             {
-                filter->H = H_n(Ve);
-                R_t R;
-                R = Eigen::MatrixXd::Identity(1, 1) * 1;
-                Eigen::VectorXd z(1);
+                neighbor_filter->H = nbH;
+                nbR_t R;
+                R = Eigen::MatrixXd::Identity(6,6) * 1;
+                Eigen::VectorXd z(6,1);
 
-                z(0) = odom_msg->twist.twist.linear.z;
+                z(0) = odom_msg->pose.pose.position.x;
+                z(1) = odom_msg->twist.twist.linear.x;
+                z(2) = odom_msg->pose.pose.position.y;
+                z(3) = odom_msg->twist.twist.linear.y;
+                z(4) = odom_msg->pose.pose.position.z;
+                z(5) = odom_msg->twist.twist.linear.z;
 
-                agents[nb_index].filter_state = filter->correct(agents[nb_index].filter_state, z, R);
-                if (filter_state_focal.x(0) < 0.0)
-                {
-                    ROS_ERROR("Filter error on line 493");
-                }
+                agents[nb_index].nb_filter_state = neighbor_filter->correct(agents[nb_index].nb_filter_state, z, R);
+
                 agents[nb_index].last_meas_s = ros::Time::now();
             }
             catch ([[maybe_unused]] std::exception e)
@@ -630,18 +733,18 @@ namespace vertical_estimator
                                 {   
                                     
                                     geometry_msgs::Point A;
-                                    A.x = nb.pfcu.x;
-                                    A.y = nb.pfcu.y;
-                                    A.z = nb.filter_state.x(0);
+                                    A.x = nb.nb_filter_state.x(0);
+                                    A.y = nb.nb_filter_state.x(2);
+                                    A.z = nb.nb_filter_state.x(4);
                                     geometry_msgs::Point B;
                                     B.x = A.x + cos(nb_hdg + focal_heading);
                                     B.y = A.y + sin(nb_hdg + focal_heading);
                                     B.z = A.z + 0.1*sin(Quat2Eul(nb.quat));
                                     // B.z = A.z ;
                                     geometry_msgs::Point C;
-                                    C.x = agents[aid].pfcu.x;
-                                    C.y = agents[aid].pfcu.y;
-                                    C.z = agents[aid].filter_state.x(0); /*need to calculate actual value*/
+                                    C.x = agents[aid].nb_filter_state.x(0);
+                                    C.y = agents[aid].nb_filter_state.x(2);
+                                    C.z = agents[aid].nb_filter_state.x(4); /*need to calculate actual value*/
                                     geometry_msgs::Point D;
                                     D.x = C.x + cos(agents[aid].angle_z + focal_heading);
                                     D.y = C.y + sin(agents[aid].angle_z + focal_heading);
@@ -1288,6 +1391,13 @@ namespace vertical_estimator
         Q_t Qq;
 
         double def_dt = 0.1;
+
+        std::unique_ptr<mrs_lib::nblkf_t> neighbor_filter;
+
+        nbA_t nbA;
+        nbB_t nbB;
+        nbH_t nbH;
+        nbQ_t nbQq;
         //}
 
         /* Global variables of focal UAV and neighbors //{ */
@@ -1357,6 +1467,8 @@ namespace vertical_estimator
 
             bool filter_init;
             statecov_t filter_state;
+
+            nbstatecov_t nb_filter_state;
 
             double angle_z;
 

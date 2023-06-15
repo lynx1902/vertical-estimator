@@ -1,0 +1,22 @@
+topics:
+- /uav29/vertical_estimator/range_output
+- /uav29/vertical_estimator/uvdar_velocity
+- /uav29/vertical_estimator/imu_velocity
+- /uav29/vertical_estimator/uvdar_pos_debug
+- /uav29/vertical_estimator/velocity_output
+- /uav29/odometry/odom_main
+- /uav29/odometry/imu_untilted
+- /uav30/vertical_estimator/range_output
+- /uav30/vertical_estimator/uvdar_velocity
+- /uav30/vertical_estimator/imu_velocity
+- /uav30/vertical_estimator/uvdar_pos_debug
+- /uav30/vertical_estimator/velocity_output
+- /uav30/odometry/odom_main
+- /uav30/odometry/imu_untilted
+- /uav38/vertical_estimator/range_output
+- /uav38/vertical_estimator/uvdar_velocity
+- /uav38/vertical_estimator/imu_velocity
+- /uav38/vertical_estimator/uvdar_pos_debug
+- /uav38/vertical_estimator/velocity_output
+- /uav38/odometry/odom_main
+- /uav38/odometry/imu_untilted
