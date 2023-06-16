@@ -57,7 +57,7 @@ using statecov_t = mrs_lib::lkf_t::statecov_t;
 using nblkf_t = mrs_lib::LKF<6,1,6>;
 
 using nbA_t = mrs_lib::nblkf_t::A_t;
-using nbB_t = mrs_lib::nblkf_t::A_t;
+using nbB_t = mrs_lib::nblkf_t::B_t;
 using nbH_t = mrs_lib::nblkf_t::H_t;
 using nbQ_t = mrs_lib::nblkf_t::Q_t;
 using nbu_t = mrs_lib::nblkf_t::u_t;
@@ -533,12 +533,12 @@ namespace vertical_estimator
                 return;
             }
 
-            // u_t u = u_t::Zero();
+            u_t u = u_t::Zero();
 
             nbu_t nbu = nbu_t::Zero();
 
             double new_dt = std::fmax(std::fmin(std::fmin((ros::Time::now()-agents[nb_index].last_updt).toSec(), (ros::Time::now()-agents[nb_index].last_meas_u).toSec()), (ros::Time::now()-agents[nb_index].last_meas_s).toSec()),0.0);
-            // filter->A = A_dt(new_dt);
+            filter->A = A_dt(new_dt);
 
             // New updated filter
             neighbor_filter->A = nbA_dt(new_dt);
@@ -552,7 +552,7 @@ namespace vertical_estimator
             // agents[nb_index].filter_state = filter->predict(agents[nb_index].filter_state, u, Qq, new_dt);
             // if (filter_state_focal.x(0) < 0.0)
             // {
-                // ROS_ERROR("Filter error on line 477");
+            //     ROS_ERROR("Filter error on line 477");
             // }
             // agents[nb_index].last_updt = ros::Time::now();
 
@@ -735,7 +735,7 @@ namespace vertical_estimator
                                     geometry_msgs::Point A;
                                     A.x = nb.nb_filter_state.x(0);
                                     A.y = nb.nb_filter_state.x(2);
-                                    A.z = nb.nb_filter_state.x(4);
+                                    A.z = nb.filter_state.x(0);
                                     geometry_msgs::Point B;
                                     B.x = A.x + cos(nb_hdg + focal_heading);
                                     B.y = A.y + sin(nb_hdg + focal_heading);
@@ -744,7 +744,7 @@ namespace vertical_estimator
                                     geometry_msgs::Point C;
                                     C.x = agents[aid].nb_filter_state.x(0);
                                     C.y = agents[aid].nb_filter_state.x(2);
-                                    C.z = agents[aid].nb_filter_state.x(4); /*need to calculate actual value*/
+                                    C.z = agents[aid].filter_state.x(0); /*need to calculate actual value*/
                                     geometry_msgs::Point D;
                                     D.x = C.x + cos(agents[aid].angle_z + focal_heading);
                                     D.y = C.y + sin(agents[aid].angle_z + focal_heading);
@@ -1069,25 +1069,44 @@ namespace vertical_estimator
                         if (eigvals(0).real() < 500 && eigvals(1).real() < 500 && eigvals(2).real() < 500 &&
                             (ros::Time::now() - agents[aid].last_meas_u).toSec() >= 4.0)
                         {
+                            // try
+                            // {
+                            //     filter->H = H_n(Po);
+
+                            //     R_t R;
+                            //     R = Eigen::MatrixXd::Identity(1, 1) * 0.00001;
+                            //     Eigen::VectorXd z(1);
+                            //     z(0) = res_l_.value().pose.pose.position.z;
+                            //     agents[aid].filter_state = filter->correct(agents[aid].filter_state, z, R);
+                            //     if (filter_state_focal.x(0) < 0.0)
+                            //     {
+                            //         ROS_ERROR("Filter error on line 924");
+                            //     }
+                            //     agents[aid].last_meas_u = ros::Time::now();
+
+                            //     ROS_WARN("Agent state updated uav%d", agents[aid].name_id);
+                            // }
+                            // catch ([[maybe_unused]] std::exception e)
+                            // {
+                            //     ROS_ERROR("LKF failed: %s", e.what());
+                            // }
+
                             try
                             {
-                                filter->H = H_n(Po);
+                                neighbor_filter->H << 0, 0, 0, 0, 1, 0;
 
-                                R_t R;
-                                R = Eigen::MatrixXd::Identity(1, 1) * 0.00001;
+                                nbR_t R;
+                                R = Eigen::MatrixXd::Identity(1,1) * 0.00001;
                                 Eigen::VectorXd z(1);
                                 z(0) = res_l_.value().pose.pose.position.z;
-                                agents[aid].filter_state = filter->correct(agents[aid].filter_state, z, R);
-                                if (filter_state_focal.x(0) < 0.0)
-                                {
-                                    ROS_ERROR("Filter error on line 924");
-                                }
+                                agents[aid].nb_filter_state = neighbor_filter->correct(agents[aid].nb_filter_state, z, R);
+                                
                                 agents[aid].last_meas_u = ros::Time::now();
 
                                 ROS_WARN("Agent state updated uav%d", agents[aid].name_id);
+
                             }
-                            catch ([[maybe_unused]] std::exception e)
-                            {
+                            catch ([[maybe_unused]] std::exception e){
                                 ROS_ERROR("LKF failed: %s", e.what());
                             }
                         }
