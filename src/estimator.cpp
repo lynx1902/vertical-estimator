@@ -39,7 +39,7 @@ namespace mrs_lib
     const int n_measurements = 1;
     using lkf_t = LKF<n_states, n_inputs, n_measurements>;
 
-    using nblkf_t = LKF<6,1,6>;
+    using nblkf_t = LKF<7,1,6>;
 } // namespace mrs_lib
 
 // using A_t = mrs_lib::lkf_t::A_t;
@@ -54,7 +54,7 @@ namespace mrs_lib
 
 // using statecov_t = mrs_lib::lkf_t::statecov_t;
 
-using nblkf_t = mrs_lib::LKF<6,1,6>;
+using nblkf_t = mrs_lib::LKF<7,1,6>;
 
 using nbA_t = mrs_lib::nblkf_t::A_t;
 using nbB_t = mrs_lib::nblkf_t::B_t;
@@ -282,39 +282,43 @@ namespace vertical_estimator
             //     0, 1.0, 0,
             //     0, 0, 1.0;
 
-            nbA.resize(6,6);
-            nbB.resize(6,1);
+            nbA.resize(7,7);
+            nbB.resize(7,1);
             // nbH.resize(7,7);
-            nbQq.resize(6,6);
+            nbQq.resize(7,7);
 
-            nbA << 1, def_dt, 0, 0, 0, 0,
-                0, 1, 0, 0, 0, 0,
-                0, 0, 1, def_dt, 0, 0,
-                0, 0, 0, 1, 0, 0,
-                0, 0, 0, 0, 1, def_dt,
-                0, 0, 0, 0, 0, 1;
+            nbA << 1, def_dt, 0, 0, 0, 0, 0,
+                0, 1, 0, 0, 0, 0, 0,
+                0, 0, 1, def_dt, 0, 0, 0,
+                0, 0, 0, 1, 0, 0, 0,
+                0, 0, 0, 0, 1, def_dt, def_dt*def_dt/2.0,
+                0, 0, 0, 0, 0, 1, def_dt,
+                0, 0, 0, 0, 0, 0, 0, 1;
 
             nbB << 1,
                 0,
                 0,
                 0,
                 0,
+                0,
                 0;
 
-            nbH << 1, 0, 0, 0, 0, 0,
-                0, 1, 0, 0, 0, 0, 
-                0, 0, 1, 0, 0, 0, 
-                0, 0, 0, 1, 0, 0, 
-                0, 0, 0, 0, 1, 0, 
-                0, 0, 0, 0, 0, 1;
+            nbH << 1, 0, 0, 0, 0, 0, 0,
+                0, 1, 0, 0, 0, 0, 0,
+                0, 0, 1, 0, 0, 0, 0,
+                0, 0, 0, 1, 0, 0, 0,
+                0, 0, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 0, 1, 0,
+                0, 0, 0, 0, 0, 0, 1;
                 
 
-            nbQq << 1.0, 0, 0, 0, 0, 0,
-                0, 1.0, 0, 0, 0, 0, 
-                0, 0, 1.0, 0, 0, 0, 
-                0, 0, 0, 1.0, 0, 0, 
-                0, 0, 0, 0, 1.0, 0,
-                0, 0, 0, 0, 0, 1.0;
+            nbQq << 1.0, 0, 0, 0, 0, 0, 0,
+                0, 1.0, 0, 0, 0, 0, 0,
+                0, 0, 1.0, 0, 0, 0, 0,
+                0, 0, 0, 1.0, 0, 0, 0,
+                0, 0, 0, 0, 1.0, 0, 0,
+                0, 0, 0, 0, 0, 1.0, 0,
+                0, 0, 0, 0, 0, 0, 1.0;
               
 
             /* what is std::make_unique*/
@@ -436,7 +440,8 @@ namespace vertical_estimator
 
                 // xxx
                 
-                ROS_INFO_THROTTLE(0.25, "H: %f, H_dt: %f", neighbor_filter_statefocal.x(4), neighbor_filter_statefocal.x(5));
+                ROS_INFO_THROTTLE(0.25, "H: %f, H_dt: %f, H_ddt: %f", neighbor_filter_statefocal.x(4), neighbor_filter_statefocal.x(5), neighbor_filter_statefocal
+                .x(6));
             }
         }
         //}
@@ -477,12 +482,13 @@ namespace vertical_estimator
 
         nbA_t nbA_dt(double dt)
         {
-            nbA << 1, dt, 0, 0, 0, 0, 
-                0, 1, 0, 0, 0, 0, 
-                0, 0, 1, dt, 0, 0, 
-                0, 0, 0, 1, 0, 0, 
-                0, 0, 0, 0, 1, dt, 
-                0, 0, 0, 0, 0, 1;
+            nbA << 1, dt, 0, 0, 0, 0, 0, 
+                0, 1, 0, 0, 0, 0, 0,
+                0, 0, 1, dt, 0, 0, 0,
+                0, 0, 0, 1, 0, 0, 0,
+                0, 0, 0, 0, 1, dt, dt*dt/2.0,
+                0, 0, 0, 0, 0, 1, dt,
+                0, 0, 0, 0, 0, 0, 1;
                 
 
                 return nbA;
@@ -590,7 +596,13 @@ namespace vertical_estimator
 
             try
             {
-                neighbor_filter->H = nbH;
+                neighbor_filter->H << 1, 0, 0, 0, 0, 0, 0,
+                                    0, 1, 0, 0, 0, 0, 0,
+                                    0, 0, 1, 0, 0, 0, 0,
+                                    0, 0, 0, 1, 0, 0, 0,
+                                    0, 0, 0, 0, 1, 0, 0,
+                                    0, 0, 0, 0, 0, 1, 0;
+                                    
                 nbR_t R;
                 R = Eigen::MatrixXd::Identity(6,6) * 1;
                 Eigen::VectorXd z(6,6);
@@ -856,13 +868,13 @@ namespace vertical_estimator
                                             // can write more elaborative cases
                                             if(dirAB.z < 0.0 && dirCD.z < 0.0){
                                                 new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 - (minDistance/2.0);
-                                                if(new_int.z > 1000){
+                                                if(new_int.z < 0){
                                                     ROS_ERROR("Line 714 calc");
                                                 }
                                             }
                                             else if(dirAB.z > 0.0 && dirCD.z > 0.0){
                                                 new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 + (minDistance/2.0);
-                                                if(new_int.z > 1000){
+                                                if(new_int.z < 00){
                                                     ROS_ERROR("Line 720 calc");
                                                 }
                                             }
@@ -876,7 +888,7 @@ namespace vertical_estimator
                                                     } else {
                                                         new_int.z = calc_z;
                                                     }
-                                                    if(new_int.z > 1000){
+                                                    if(new_int.z < 00){
                                                     ROS_ERROR("Line 728 calc");
                                                 }
                                                 }
@@ -888,7 +900,7 @@ namespace vertical_estimator
                                                     } else {
                                                         new_int.z = calc_z;
                                                     }
-                                                    if(new_int.z > 1000){
+                                                    if(new_int.z < 00){
                                                     ROS_ERROR("Line 734 calc");
                                                 }
                                                 }
@@ -909,13 +921,13 @@ namespace vertical_estimator
 
                                             if((crossdirCDandL.x * crossProduct.x + crossdirCDandL.y * crossProduct.y + crossdirCDandL.z * crossProduct.z) > 0){
                                                 new_int.z =  A.z + (h/k) * dirAB.z;
-                                                if(new_int.z > 1000){
+                                                if(new_int.z < 00){
                                                     ROS_ERROR("Line 755 calc");
                                                     exit(0);
                                                 }
                                             } else {
                                                 new_int.z = A.z - (h/k) * dirAB.z;
-                                                if(new_int.z > 1000){
+                                                if(new_int.z < 00){
                                                     ROS_ERROR("Line 760 calc");
                                                     exit(0);
                                                 }
@@ -933,9 +945,9 @@ namespace vertical_estimator
                                         double minDistance = abs(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z)/(crossProductMagnitude);
                                         
                                         // write in a more elaborative manner
+                                        
 
-
-                                        new_int.z = A.z + (minDistance/2.0);
+                                        new_int.z = (A.z + C.z)/2.0 + (minDistance/2.0);
                                         
                                     }
 
@@ -1024,7 +1036,7 @@ namespace vertical_estimator
 
                                         if (!filter_init_focal)
                                         {
-                                            Eigen::VectorXd poseVec(6);
+                                            Eigen::VectorXd poseVec(7);
                                             poseVec(0) = 0; /*important part to figure out. Intersection of all poses to find actual
                                                                        coordinates*/
                                             poseVec(1) = 0;
@@ -1032,10 +1044,10 @@ namespace vertical_estimator
                                             poseVec(3) = 0;
                                             poseVec(4) = new_int.z;
                                             poseVec(5) = 0;
+                                            poseVec(6) = 0; 
                                             
-                                            
-                                            Eigen::MatrixXd poseCov(6,6 );
-                                            poseCov << Eigen::MatrixXd::Identity(6, 6);
+                                            Eigen::MatrixXd poseCov(7,7);
+                                            poseCov << Eigen::MatrixXd::Identity(7, 7);
 
                                             ROS_INFO("LKF initialized for the focal UAV at %f of GPS frame.", poseVec(4));
 
@@ -1070,12 +1082,12 @@ namespace vertical_estimator
 
                                             try
                                             {
-                                                neighbor_filter->H << 0, 0, 0, 0, 0, 0,
-                                                                    0, 0, 0, 0, 0, 0,
-                                                                    0, 0, 0, 0, 0, 0,
-                                                                    0, 0, 0, 0, 0, 0,
-                                                                    0, 0, 0, 0, 1, 0,
-                                                                    0, 0, 0, 0, 0, 0;
+                                                neighbor_filter->H << 0, 0, 0, 0, 0, 0, 0,
+                                                                    0, 0, 0, 0, 0, 0, 0,
+                                                                    0, 0, 0, 0, 0, 0, 0,
+                                                                    0, 0, 0, 0, 0, 0, 0,
+                                                                    0, 0, 0, 0, 1, 0, 0,
+                                                                    0, 0, 0, 0, 0, 0, 0;
                                                                     
 
                                                 nbR_t R;
@@ -1145,16 +1157,17 @@ namespace vertical_estimator
 
                     if (!agents[aid].filter_init)
                     {
-                        Eigen::VectorXd poseVec(6);
+                        Eigen::VectorXd poseVec(7);
                         poseVec(0) = 0;
                         poseVec(1) = 0;
                         poseVec(2) = 0;
                         poseVec(3) = 0;
                         poseVec(4) = res_l_.value().pose.pose.position.z;
                         poseVec(5) = 0;
+                        poseVec(6) = 0;
                         
-                        Eigen::MatrixXd poseCov(6, 6);
-                        poseCov << Eigen::MatrixXd::Identity(6, 6);
+                        Eigen::MatrixXd poseCov(7, 7);
+                        poseCov << Eigen::MatrixXd::Identity(7, 7);
 
                         ROS_INFO("LKF initialized for UAV%d with UVDAR reloc at %f, %f of gps frame.", agents[aid].name_id,
                                  poseVec(4), poseVec(5));
@@ -1195,12 +1208,12 @@ namespace vertical_estimator
 
                             try
                             {
-                                neighbor_filter->H << 0, 0, 0, 0, 0, 0,
-                                                    0, 0, 0, 0, 0, 0,
-                                                    0, 0, 0, 0, 0, 0,
-                                                    0, 0, 0, 0, 0, 0,
-                                                    0, 0, 0, 0, 1, 0,
-                                                    0, 0, 0, 0, 0, 0;
+                                neighbor_filter->H << 0, 0, 0, 0, 0, 0, 0,
+                                                    0, 0, 0, 0, 0, 0, 0,
+                                                    0, 0, 0, 0, 0, 0, 0,
+                                                    0, 0, 0, 0, 0, 0, 0,
+                                                    0, 0, 0, 0, 1, 0, 0,
+                                                    0, 0, 0, 0, 0, 0, 0;
 
                                 nbR_t R;
                                 R = Eigen::MatrixXd::Identity(6,6) * 0.00001;
@@ -1287,17 +1300,17 @@ namespace vertical_estimator
                     {
                         try
                         {
-                            neighbor_filter->H << 0, 0, 0, 0, 0, 0,
-                                                0, 0, 0, 0, 0, 0,
-                                                0, 0, 0, 0, 0, 0,
-                                                0, 0, 0, 0, 0, 0,
-                                                0, 0, 0, 0, 1, 0,
-                                                0, 0, 0, 0, 0, 0;
+                            neighbor_filter->H << 0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 1, 0;
 
                             nbR_t R;
                             R = Eigen::MatrixXd::Identity(6, 6) * 3.0;
                             Eigen::VectorXd z(6);
-                            z(4) = u_vel.z;
+                            z(5) = u_vel.z;
                             neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
                             if (neighbor_filter_statefocal.x(4) > 1000.0)
                             {
@@ -1366,13 +1379,12 @@ namespace vertical_estimator
                     // }
 
                      try {
-                        neighbor_filter->H << 0, 0, 0, 0, 0, 0,
-                                            0, 0, 0, 0, 0, 0,
-                                            0, 0, 0, 0, 0, 0,
-                                            0, 0, 0, 0, 0, 0,
-                                            0, 0, 0, 0, 0, 0,
-                                            0, 0, 0, 0, 0, 1; 
-
+                        neighbor_filter->H << 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 1, 0;
 
                         nbR_t R;
 
@@ -1399,23 +1411,28 @@ namespace vertical_estimator
                 }
                 else {
                     if((ros::Time::now() - last_imuac_meas).toSec() > 0.05){
-                        // try {
-                        //     neighbor_filter->H << 0, 0, 0, 0, 0, 0, 1;
+                        try {
+                            neighbor_filter->H <<0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 0, 1;
 
-                        //     nbR_t R;
-                        //     R = Eigen::MatrixXd::Identity(1,1) * 1.0;
-                        //     Eigen::VectorXd z(1);
-                        //     z(0) = az_linear;
-                        //     neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
-                        //     if(neighbor_filter_statefocal.x(4) < 0.0){
-                        //         ROS_ERROR("Filter error on line 1071");
-                        //     }
-                        //     last_meas_focal = ros::Time::now();
-                        //     last_imuac_meas = ros::Time::now();
-                        // }
-                        // catch ([[maybe_unused]] std::exception e){
-                        //     ROS_ERROR("LKF failed: %s", e.what());
-                        // }
+                            nbR_t R;
+                            R = Eigen::MatrixXd::Identity(6,6) * 1.0;
+                            Eigen::VectorXd z(6);
+                            z(5) = az_linear;
+                            neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
+                            if(neighbor_filter_statefocal.x(4) < 0.0){
+                                ROS_ERROR("Filter error on line 1071");
+                            }
+                            last_meas_focal = ros::Time::now();
+                            last_imuac_meas = ros::Time::now();
+                        }
+                        catch ([[maybe_unused]] std::exception e){
+                            ROS_ERROR("LKF failed: %s", e.what());
+                        }
 
                         // try {
                         //     filter->H = H_n(Ac);
