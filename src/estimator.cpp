@@ -1158,9 +1158,9 @@ namespace vertical_estimator
                     if (!agents[aid].filter_init)
                     {
                         Eigen::VectorXd poseVec(7);
-                        poseVec(0) = 0;
+                        poseVec(0) = res_l_.value().pose.pose.position.x;
                         poseVec(1) = 0;
-                        poseVec(2) = 0;
+                        poseVec(2) = res_l_.value().pose.pose.position.y;
                         poseVec(3) = 0;
                         poseVec(4) = res_l_.value().pose.pose.position.z;
                         poseVec(5) = 0;
@@ -1218,6 +1218,8 @@ namespace vertical_estimator
                                 nbR_t R;
                                 R = Eigen::MatrixXd::Identity(6,6) * 0.00001;
                                 Eigen::VectorXd z(6);
+                                z(0) = res_l_.value().pose.pose.position.x;
+                                z(2) = res_l_.value().pose.pose.position.y;
                                 z(4) = res_l_.value().pose.pose.position.z;
                                 agents[aid].nb_filter_state = neighbor_filter->correct(agents[aid].nb_filter_state, z, R);
                                 
