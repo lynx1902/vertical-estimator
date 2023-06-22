@@ -436,19 +436,96 @@ namespace vertical_estimator
                 // pub_vert_estimator_output.publish(vert_est_output); 
 
                 geometry_msgs::Point velo;
+                velo.x = neighbor_filter_statefocal.x(1) * cos(-focal_heading) - neighbor_filter_statefocal.x(3) * sin(-focal_heading);
+                velo.y = neighbor_filter_statefocal.x(1) * sin(-focal_heading) + neighbor_filter_statefocal.x(3) * cos(-focal_heading);
                 velo.z = neighbor_filter_statefocal.x(5);
                 pub_vert_estimator_output_fcu.publish(velo);
 
-                // std::string output_frame = estimation_frame;
+                std::string output_frame = estimation_frame;
 
                 // xxx
+
+                  visualization_msgs::Marker sphere;
+                sphere.header.frame_id = output_frame;
+                sphere.header.stamp = ros::Time::now();
+                sphere.id = 1; 
+                sphere.type = visualization_msgs::Marker::SPHERE;
+                sphere.action = 0;
+                sphere.pose.position.x = neighbor_filter_statefocal.x(0);
+                sphere.pose.position.y = neighbor_filter_statefocal.x(1);
+                sphere.pose.position.z = neighbor_filter_statefocal.x(2);
+                sphere.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
+                sphere.scale.x = 0.3;
+                sphere.scale.y = 0.3;
+                sphere.scale.z = 0.3;
+                sphere.color.a = 1.0; 
+                sphere.color.r = 0.0;
+                sphere.color.g = 0.0;
+                sphere.color.b = 1.0;
+                
+                pub_debug_position.publish(sphere);
                 
                 ROS_INFO_THROTTLE(0.25, "H: %f, H_dt: %f, H_ddt: %f", neighbor_filter_statefocal.x(4), neighbor_filter_statefocal.x(5), neighbor_filter_statefocal
                 .x(6));
             }
         }
         //}
+        void TimerDebug([[maybe_unused]] const ros::TimerEvent& te) {
+            if (initialized_){
+        
+            visualization_msgs::MarkerArray relative_poses;
+            
+            int a = 0;
 
+            for(auto nb : agents){
+                if(!nb.filter_init) continue;
+
+                a++; 
+                std::string output_frame = estimation_frame;
+                
+                visualization_msgs::Marker arrow;
+                arrow.header.frame_id = output_frame;
+                arrow.header.stamp = ros::Time::now();
+                arrow.id = a; 
+                arrow.type = visualization_msgs::Marker::ARROW;
+                arrow.action = 0;
+
+                arrow.pose.position.x = nb.nb_filter_state.x(0);
+                arrow.pose.position.y = nb.nb_filter_state.x(2);
+                arrow.pose.position.z = nb.nb_filter_state.x(4);
+
+                arrow.pose.orientation = mrs_lib::AttitudeConverter(0, 0, focal_heading);
+                arrow.scale.x = 1.0;
+                arrow.scale.y = 0.1;
+                arrow.scale.z = 0.1;
+                arrow.color.a = 1.0; 
+                arrow.color.r = 0.0;
+                arrow.color.g = 0.0;
+                arrow.color.b = 0.0;
+                
+                relative_poses.markers.push_back(arrow);
+                
+            }
+            pub_debug.publish(relative_poses);
+
+            for(auto& ps : past_spheres){
+                if((ros::Time::now() - ps.last_debug).toSec() > 0.2){
+                        
+                std::string output_frame = estimation_frame;
+                
+                visualization_msgs::Marker sphere;
+                sphere.header.frame_id = output_frame;
+                sphere.header.stamp = ros::Time::now();
+                sphere.id = ps.id; 
+                sphere.type = visualization_msgs::Marker::SPHERE;
+                sphere.action = 2;
+
+                pub_debug_position.publish(sphere);
+                ps.valid = false;
+                }
+            }
+            }
+        }
         /* Filter matrices update //{ */
 
         // A_t A_dt(double dt)
@@ -604,7 +681,7 @@ namespace vertical_estimator
                                     0, 0, 0, 0, 0, 1, 0;
                                     
                 nbR_t R;
-                R = Eigen::MatrixXd::Identity(3,3) * 1;
+                R = Eigen::MatrixXd::Identity(3,3) * 0.00001;
                 Eigen::VectorXd z(3,3);
 
                 z(0) = odom_msg->twist.twist.linear.x;
@@ -624,7 +701,30 @@ namespace vertical_estimator
                 ROS_ERROR("LKF failed: %s", e.what());
             }
 
-            
+            try{
+                neighbor_filter->H << 1, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 1, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 1, 0, 0;
+
+                nbR_t R;
+                R = Eigen::MatrixXd::Identity(3,3) * 0.00001;
+                Eigen::VectorXd z(3,3);
+
+                z(0) = odom_msg->pose.pose.position.x;
+                z(1) = odom_msg->pose.pose.position.y;
+                z(2) = odom_msg->pose.pose.position.z;
+
+                agents[nb_index].nb_filter_state = neighbor_filter->correct(agents[nb_index].nb_filter_state, z, R);
+
+                if(neighbor_filter_statefocal.x(4) < 000.0){
+                    ROS_ERROR("Filter error on line 643");
+                }
+
+                agents[nb_index].last_meas_s = ros::Time::now();
+            }
+            catch([[maybe_unused]] std::exception e){
+                ROS_ERROR("LKF failed: %s", e.what());
+            }
 
 
 
@@ -765,7 +865,7 @@ namespace vertical_estimator
                                     geometry_msgs::Point B;
                                     B.x = A.x + cos(nb_hdg + focal_heading);
                                     B.y = A.y + sin(nb_hdg + focal_heading);
-                                    B.z = A.z + 0.1*sin(Quat2Eul(nb.quat));
+                                    B.z = A.z + 0.08*sin(Quat2Eul(nb.quat));
                                     // B.z = A.z ;
                                     geometry_msgs::Point C;
                                     C.x = agents[aid].nb_filter_state.x(0);
@@ -774,7 +874,7 @@ namespace vertical_estimator
                                     geometry_msgs::Point D;
                                     D.x = C.x + cos(agents[aid].angle_z + focal_heading);
                                     D.y = C.y + sin(agents[aid].angle_z + focal_heading);
-                                    D.z = C.z + 0.1*sin(Quat2Eul(agents[aid].quat));
+                                    D.z = C.z + 0.08*sin(Quat2Eul(agents[aid].quat));
                                     // D.z = C.z ;          
 
                                     geometry_msgs::Point dirAB, dirCD;
@@ -857,39 +957,58 @@ namespace vertical_estimator
                                             // double minDistance = sqrt(L.x * L.x + L.y * L.y + L.z * L.z);
 
                                             // double minDistance = sqrt(dx * dx + dy * dy + dz * dz);
-
+                                            
+                                            // https://www.quora.com/How-do-I-find-the-shortest-distance-between-two-skew-lines
                                             double minDistance = abs(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z)/(crossProductMagnitude);
-                                            // double dist_z = minDistance * sqrt(1.0 - (crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y) / (crossProductMagnitude * crossProductMagnitude));
+                                            double dist_z = abs(L.x * crossProduct.x)/crossProductMagnitude;
+                                            double dist_x = abs(L.y * crossProduct.y)/crossProductMagnitude;
+                                            double dist_y = abs(L.z * crossProduct.z)/crossProductMagnitude;
 
-                                            if(minDistance > 0.0){
+                                            if(minDistance == dist_z){
+                                                ROS_WARN("Values are same!No issue here");
+                                            }
+
+                                            if(dist_z > 0.0){
                                             // can write more elaborative cases
+                                            if(intersectionAB.z < 0 && intersectionCD.z < 0){
+                                                new_int.x = (intersectionAB.x + intersectionCD.x)/2.0;
+                                                new_int.y = (intersectionAB.y + intersectionCD.y)/2.0;
+                                            }
                                             if(dirAB.z < 0.0 && dirCD.z < 0.0){
-                                              new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 - (minDistance/2.0);
-                                              new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 - (minDistance/2.0);
-                                              new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 - (minDistance/2.0);
+                                              new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 - (dist_x/2.0);
+                                              new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 - (dist_x/2.0);
+                                              new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 - (dist_z/2.0);
                                                 if(new_int.z < 0){
                                                     ROS_ERROR("Line 714 calc");
-                                                    
+                                                    new_int.z = (A.z + C.z)/2.0 - (dist_z/2.0);
+                                                    if(new_int.z < 0.0){
+                                                        ROS_ERROR("Still negative at 714");
+                                                        new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
+                                                    }
                                                 }
                                             }
                                             else if(dirAB.z > 0.0 && dirCD.z > 0.0){
-                                                new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 + (minDistance/2.0);
-                                                new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 + (minDistance/2.0);
-                                                new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 + (minDistance/2.0);
+                                                new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 + (dist_y/2.0);
+                                                new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 + (dist_y/2.0);
+                                                new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 + (dist_z/2.0);
                                                 if(new_int.z < 00){
                                                     ROS_ERROR("Line 720 calc");
-                                                    
+                                                    new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
+                                                    if(new_int.z < 0.0){
+                                                        ROS_ERROR("Still negative at 720");
+                                                        
+                                                    }
                                                 }
                                             }
                                             else {
                                                 ROS_WARN("Opposite Slopes");
                                                 if(intersectionAB.z < intersectionCD.z){
-                                                    new_int.x = intersectionAB.x + (minDistance/2.0);
-                                                    new_int.y = intersectionAB.y + (minDistance/2.0);
-                                                    double calc_z = intersectionAB.z + (minDistance/2.0);
+                                                    new_int.x = intersectionAB.x + (dist_x/2.0);
+                                                    new_int.y = intersectionAB.y + (dist_y/2.0);
+                                                    double calc_z = intersectionAB.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0.0){
-                                                        new_int.z = (A.z + C.z)/2.0 + (minDistance/2.0);
+                                                        new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
                                                     } else {
                                                         new_int.z = calc_z;
                                                     }
@@ -898,12 +1017,12 @@ namespace vertical_estimator
                                                 }
                                                 }
                                                 else if (intersectionCD.z < intersectionAB.z){
-                                                    new_int.x = intersectionCD.x + (minDistance/2.0);
-                                                    new_int.y = intersectionCD.y + (minDistance/2.0);
-                                                    double calc_z = intersectionCD.z + (minDistance/2.0);
+                                                    new_int.x = intersectionCD.x + (dist_x/2.0);
+                                                    new_int.y = intersectionCD.y + (dist_y/2.0);
+                                                    double calc_z = intersectionCD.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0){
-                                                        new_int.z = (A.z + C.z)/2.0 + (minDistance/2.0);
+                                                        new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
                                                     } else {
                                                         new_int.z = calc_z;
                                                     }
@@ -1256,6 +1375,28 @@ namespace vertical_estimator
                 sum_of_ints.ints.y = sum_of_ints.ints.y / sum_of_ints.ints_count;
                 sum_of_ints.ints.z = sum_of_ints.ints.z / sum_of_ints.ints_count;
 
+                std::string output_fr = estimation_frame;
+                visualization_msgs::Marker sphere;
+                sphere.header.frame_id = output_fr;
+                sphere.header.stamp = ros::Time::now();
+                sphere.id = 666; 
+                sphere.type = visualization_msgs::Marker::SPHERE;
+                sphere.action = 0;
+                sphere.pose.position.x = sum_of_ints.ints.x;
+                sphere.pose.position.y = sum_of_ints.ints.y;
+                sphere.pose.position.z = sum_of_ints.ints.z;
+
+                sphere.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
+                sphere.scale.x = 0.3;
+                sphere.scale.y = 0.3;
+                sphere.scale.z = 0.3;
+                sphere.color.a = 1.0; 
+                sphere.color.r = 0.0;
+                sphere.color.g = 1.0;
+                sphere.color.b = 0.2;
+      
+                pub_debug_position.publish(sphere);
+
                 U_POS new_pose;
                 new_pose.t = ros::Time::now();
                 new_pose.pose = sum_of_ints.ints;
@@ -1392,10 +1533,12 @@ namespace vertical_estimator
             // }
 
             if(acc_outlier.back() - az_linear > 1.00 || acc_outlier.back() - az_linear < -1.000){
-                ROS_INFO("REPLACING acc %f with acc %f", az_linear, acc_outlier.back());
+                ROS_WARN("REPLACING acc %f with acc %f", az_linear, acc_outlier.back());
                 az_linear = acc_outlier.back();
             }
             acc_outlier.push_back(az_linear);
+
+            
 
             velocity_imu_focal.z =  velocity_imu_focal.z + az_linear * dt;
             velocity_imu_focal.x = velocity_imu_focal.x + ax * dt;
@@ -1403,7 +1546,7 @@ namespace vertical_estimator
             last_imu_update = ros::Time::now();
             
             if(vel_outlier.back() - velocity_imu_focal.z > 0.4500 || vel_outlier.back() - velocity_imu_focal.z < -0.4500){
-                ROS_INFO("!!!!Replacing %f with %f!!!!",velocity_imu_focal.z, vel_outlier.back());
+                ROS_WARN("!!!!Replacing vel %f with %f!!!!",velocity_imu_focal.z, vel_outlier.back());
                 velocity_imu_focal.z = vel_outlier.back();
             }
             vel_outlier.push_back(velocity_imu_focal.z);
@@ -1450,7 +1593,7 @@ namespace vertical_estimator
 
                         nbR_t R;
 
-                        R = Eigen::MatrixXd::Identity(3,3) * 1.0;
+                        R = Eigen::MatrixXd::Identity(3,3) * 1;
                         Eigen::VectorXd z(3);
                         z(0) = velocity_imu_focal.x;
                         z(1) = velocity_imu_focal.y;
@@ -1481,7 +1624,7 @@ namespace vertical_estimator
                                                 0, 0, 0, 0, 0, 0, 1;
 
                             nbR_t R;
-                            R = Eigen::MatrixXd::Identity(3,3) * 1.0;
+                            R = Eigen::MatrixXd::Identity(3,3) * 1;
                             Eigen::VectorXd z(3);
                             z(0) = ax;
                             z(1) = ay;

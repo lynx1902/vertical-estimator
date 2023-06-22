@@ -718,7 +718,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /uav29/state_estimator/debug_position
+      Marker Topic: /uav29/vertical_estimator/debug_position
       Name: Marker
       Namespaces:
         {}
