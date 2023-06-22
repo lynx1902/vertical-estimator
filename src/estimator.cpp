@@ -113,7 +113,7 @@ namespace vertical_estimator
             pub_debug_position = nh_.advertise<visualization_msgs::Marker>("debug_position",1);
             pub_velocity = nh_.advertise<geometry_msgs::Point>("velocity",1);
             pub_velocity_imu = nh_.advertise<geometry_msgs::Point>("imu_velocity",1);
-
+            pub_acc_imu = nh_.advertise<geometry_msgs::Point>("imu_acc",1);
 
             pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>("range_output", 1); /*vert estimator*/
 
@@ -607,16 +607,13 @@ namespace vertical_estimator
                 R = Eigen::MatrixXd::Identity(3,3) * 1;
                 Eigen::VectorXd z(3,3);
 
-// #               z(0) = odom_msg->pose.pose.position.x;
                 z(0) = odom_msg->twist.twist.linear.x;
-// #               z(2) = odom_msg->pose.pose.position.y;
                 z(1) = odom_msg->twist.twist.linear.y;
-// #               z(4) = odom_msg->pose.pose.position.z;
                 z(2) = odom_msg->twist.twist.linear.z;
 
                 agents[nb_index].nb_filter_state = neighbor_filter->correct(agents[nb_index].nb_filter_state, z, R);
 
-                if(neighbor_filter_statefocal.x(0) < 000.0){
+                if(neighbor_filter_statefocal.x(4) < 000.0){
                     ROS_ERROR("Filter error on line 608");
                 }
 
@@ -872,6 +869,7 @@ namespace vertical_estimator
                                               new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 - (minDistance/2.0);
                                                 if(new_int.z < 0){
                                                     ROS_ERROR("Line 714 calc");
+                                                    
                                                 }
                                             }
                                             else if(dirAB.z > 0.0 && dirCD.z > 0.0){
@@ -880,6 +878,7 @@ namespace vertical_estimator
                                                 new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 + (minDistance/2.0);
                                                 if(new_int.z < 00){
                                                     ROS_ERROR("Line 720 calc");
+                                                    
                                                 }
                                             }
                                             else {
@@ -933,7 +932,7 @@ namespace vertical_estimator
                                                 new_int.z =  A.z + (h/k) * dirAB.z;
                                                 if(new_int.z < 00){
                                                     ROS_ERROR("Line 755 calc");
-// # exit(0);
+
                                                 }
                                             } else {
                                                 new_int.x = A.x - (h/k) * dirAB.x;
@@ -941,7 +940,7 @@ namespace vertical_estimator
                                                 new_int.z = A.z - (h/k) * dirAB.z;
                                                 if(new_int.z < 00){
                                                     ROS_ERROR("Line 760 calc");
-// # exit(0);
+
                                                 }
                                             }
                                             
@@ -984,48 +983,48 @@ namespace vertical_estimator
 
                                         std::string output_frame = estimation_frame;
 
-                                        // visualization_msgs::Marker sphere;
-                                        // sphere.header.frame_id = output_frame;
-                                        // sphere.header.stamp = ros::Time::now();
-                                        // sphere.id = 10*nb.virt_id + agents[aid].virt_id; 
-                                        // sphere.type = visualization_msgs::Marker::SPHERE;
-                                        // sphere.action = 0;
+                                        visualization_msgs::Marker sphere;
+                                        sphere.header.frame_id = output_frame;
+                                        sphere.header.stamp = ros::Time::now();
+                                        sphere.id = 10*nb.virt_id + agents[aid].virt_id; 
+                                        sphere.type = visualization_msgs::Marker::SPHERE;
+                                        sphere.action = 0;
                        
-                                        // bool added = false;
-                                        // for(auto& ps : past_spheres){
-                                        //   if(ps.id == sphere.id){
-                                        //     ps.last_debug = ros::Time::now();
-                                        //     ps.valid = true;
-                                        //     added = true;
-                                        //     break;
-                                        //   }
-                                        // }
-                                        // if(!added){
-                                        //   Debug new_sphere;
-                                        //   new_sphere.id = sphere.id;
-                                        //   new_sphere.valid = true;
-                                        //   new_sphere.last_debug = ros::Time::now();
-                                        //   past_spheres.push_back(new_sphere);
-                                        // }
+                                        bool added = false;
+                                        for(auto& ps : past_spheres){
+                                          if(ps.id == sphere.id){
+                                            ps.last_debug = ros::Time::now();
+                                            ps.valid = true;
+                                            added = true;
+                                            break;
+                                          }
+                                        }
+                                        if(!added){
+                                          Debug new_sphere;
+                                          new_sphere.id = sphere.id;
+                                          new_sphere.valid = true;
+                                          new_sphere.last_debug = ros::Time::now();
+                                          past_spheres.push_back(new_sphere);
+                                        }
                        
-                                        // sphere.pose.position.x = new_int.x;
-                                        // sphere.pose.position.y = new_int.y;
-                                        // sphere.pose.position.z = new_int.z;
+                                        sphere.pose.position.x = new_int.x;
+                                        sphere.pose.position.y = new_int.y;
+                                        sphere.pose.position.z = new_int.z;
                        
-                                        // sphere.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
-                                        // sphere.scale.x = 0.3;
-                                        // sphere.scale.y = 0.3;
-                                        // sphere.scale.z = 0.3;
-                                        // sphere.color.a = 1.0; 
-                                        // sphere.color.r = 1.0;
-                                        // sphere.color.g = 0.0;
-                                        // sphere.color.b = 0.0;
+                                        sphere.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
+                                        sphere.scale.x = 0.3;
+                                        sphere.scale.y = 0.3;
+                                        sphere.scale.z = 0.3;
+                                        sphere.color.a = 1.0; 
+                                        sphere.color.r = 1.0;
+                                        sphere.color.g = 0.0;
+                                        sphere.color.b = 0.0;
                            
-                                        // pub_debug_position.publish(sphere);
+                                        pub_debug_position.publish(sphere);
 
                                         
-                                        // sum_of_ints.ints.x += new_int.x;
-                                        // sum_of_ints.ints.y += new_int.y;
+                                        sum_of_ints.ints.x += new_int.x;
+                                        sum_of_ints.ints.y += new_int.y;
                                         sum_of_ints.ints.z += new_int.z; /*calculate this correctly, not sure about current implementation*/
                                         sum_of_ints.ints_count += 1;
                                         
@@ -1110,7 +1109,7 @@ namespace vertical_estimator
                                                 z(2) = new_int.z; /* need intersection point of all poses*/
 
                                                 neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
-                                                if (neighbor_filter_statefocal.x(4) > 1000.0)
+                                                if (neighbor_filter_statefocal.x(4) < 00.0)
                                                 {
                                                     ROS_ERROR("Filter error on line 852");
                                                 }
@@ -1345,7 +1344,7 @@ namespace vertical_estimator
                             z(1) = u_vel.y;
                             z(2) = u_vel.z;
                             neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
-                            if (neighbor_filter_statefocal.x(4) > 1000.0)
+                            if (neighbor_filter_statefocal.x(4) < 00.0)
                             {
                                 ROS_ERROR("Filter error on line 990");
                             }
@@ -1375,20 +1374,41 @@ namespace vertical_estimator
 
         void ImuOdom(const sensor_msgs::Imu& msg){
             double az_raw = msg.linear_acceleration.z;
-            double ax = msg.linear_acceleration.x;
-            double ay = msg.linear_acceleration.y;
+            double ax = msg.linear_acceleration.x * cos(focal_heading) - msg.linear_acceleration.y * sin(focal_heading);
+            double ay = msg.linear_acceleration.x * sin(focal_heading) + msg.linear_acceleration.y * cos(focal_heading);
+            
 
             double az_linear = az_raw - 9.8066;
 
+            for(int i=0; i < 1; i++){
+                vel_outlier.push_back(0.0);
+                acc_outlier.push_back(0.0);
+            }
+
             double dt = (ros::Time::now() - last_imu_update).toSec();
 
-            velocity_imu_focal.z +=  az_linear * dt;
-            velocity_imu_focal.x += ax * dt;
-            velocity_imu_focal.y += ay * dt;
-            if(az_raw > 9.75 && az_raw < 9.85){
-                velocity_imu_focal.z = 0.0;
+            // if(az_raw > 9.70 && az_raw < 9.90){
+            //     az_linear = 0.0;
+            // }
+
+            if(acc_outlier.back() - az_linear > 1.00 || acc_outlier.back() - az_linear < -1.000){
+                ROS_INFO("REPLACING acc %f with acc %f", az_linear, acc_outlier.back());
+                az_linear = acc_outlier.back();
             }
+            acc_outlier.push_back(az_linear);
+
+            velocity_imu_focal.z =  velocity_imu_focal.z + az_linear * dt;
+            velocity_imu_focal.x = velocity_imu_focal.x + ax * dt;
+            velocity_imu_focal.y = velocity_imu_focal.y + ay * dt;
             last_imu_update = ros::Time::now();
+            
+            if(vel_outlier.back() - velocity_imu_focal.z > 0.4500 || vel_outlier.back() - velocity_imu_focal.z < -0.4500){
+                ROS_INFO("!!!!Replacing %f with %f!!!!",velocity_imu_focal.z, vel_outlier.back());
+                velocity_imu_focal.z = vel_outlier.back();
+            }
+            vel_outlier.push_back(velocity_imu_focal.z);
+           
+            
 
             geometry_msgs::Point imu_vel;
             imu_vel.x = velocity_imu_focal.x;
@@ -1396,6 +1416,11 @@ namespace vertical_estimator
             imu_vel.z = velocity_imu_focal.z;
             pub_velocity_imu.publish(imu_vel);
 
+            geometry_msgs::Point imu_acc;
+            imu_acc.x = ax;
+            imu_acc.y = ay;
+            imu_acc.z = az_linear;
+            pub_acc_imu.publish(imu_acc);
 
             if((ros::Time::now() - last_imu_correction).toSec() > 0.1 && (ros::Time::now() - last_imu_meas).toSec() > 0.25){
                 if(filter_init_focal){
@@ -1431,7 +1456,7 @@ namespace vertical_estimator
                         z(1) = velocity_imu_focal.y;
                         z(2) = velocity_imu_focal.z;
                         neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
-                        if(neighbor_filter_statefocal.x(4) > 1000.0){
+                        if(neighbor_filter_statefocal.x(4) < 000.0){
                             ROS_ERROR("Filter error on line 1045");
                         }
                         last_meas_focal = ros::Time::now();
@@ -1458,6 +1483,8 @@ namespace vertical_estimator
                             nbR_t R;
                             R = Eigen::MatrixXd::Identity(3,3) * 1.0;
                             Eigen::VectorXd z(3);
+                            z(0) = ax;
+                            z(1) = ay;
                             z(2) = az_linear;
                             neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
                             if(neighbor_filter_statefocal.x(4) < 0.0){
@@ -1572,17 +1599,21 @@ namespace vertical_estimator
             tf::Quaternion quater;
             tf::quaternionMsgToTF(quat, quater);
 
+            auto q = mrs_lib::AttitudeConverter(quat);
+
+            return q.getPitch();
+
             // the tf::Quaternion has a method to acess roll pitch and yaw
-            double roll, pitch, yaw;
-            tf::Matrix3x3(quater).getRPY(roll, pitch, yaw);
+            // double roll, pitch, yaw;
+            // tf::Matrix3x3(quater).getRPY(roll, pitch, yaw);
 
-            // the found angles are written in a geometry_msgs::Vector3
-            geometry_msgs::Vector3 rpy;
-            rpy.x = roll;
-            rpy.y = pitch;
-            rpy.z = yaw;
+            // // the found angles are written in a geometry_msgs::Vector3
+            // geometry_msgs::Vector3 rpy;
+            // rpy.x = roll;
+            // rpy.y = pitch;
+            // rpy.z = yaw;
 
-            return rpy.y;
+            // return rpy.y;
 
         }
 
@@ -1600,6 +1631,7 @@ namespace vertical_estimator
 
         ros::Publisher pub_velocity;
 
+        ros::Publisher pub_acc_imu;
         ros::Publisher pub_velocity_imu;
         ros::Publisher pub_velocity_uvdar;
         ros::Publisher pub_estimator_output;
@@ -1764,6 +1796,9 @@ namespace vertical_estimator
         EulAng q2e;
 
         std::vector<double> uvdar_pos;
+
+        std::vector<double> vel_outlier;
+        std::vector<double> acc_outlier;
         // Eigen::MatrixXd output(3,3);
         //}
         //}
