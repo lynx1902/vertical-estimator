@@ -33,6 +33,8 @@
 
       <param name="range2_publish_topic" value="/$(arg uav_name)/garmin/range2"/> 
 
+      <param name="attitude_cmd_topic" value="/$(arg uav_name)/control_manager/attitude_cmd" />
+
        <param     name="filtered_poses_topics" value="/$(arg uav_name)/uvdar/filteredPoses"/>
 
       <!-- <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R"] </rosparam> -->

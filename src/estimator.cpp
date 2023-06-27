@@ -25,6 +25,7 @@
 #include <tf/tf.h>
 #include <tf/transform_datatypes.h>
 #include <geometry_msgs/Vector3.h>
+#include <mrs_msgs/AttitudeCommand.h>
 
 
 /* Filter preliminary //{ */
@@ -98,6 +99,7 @@ namespace vertical_estimator
 
             param_loader.loadParam("range_topic", range_topic);
             param_loader.loadParam("range2_publish_topic", range2_publish_topic);
+            param_loader.loadParam("attitude_cmd_topic", attitude_cmd_topic);
 
             estimation_frame = uav_name + "/gps_origin";
 
@@ -115,19 +117,23 @@ namespace vertical_estimator
             pub_velocity_imu = nh_.advertise<geometry_msgs::Point>("imu_velocity",1);
             pub_acc_imu = nh_.advertise<geometry_msgs::Point>("imu_acc",1);
 
-            pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>("range_output", 1); /*vert estimator*/
+            // pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>("range_output", 1); /*vert estimator*/
+            pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>(range2_publish_topic, 1);
 
             pub_velocity_uvdar_fcu = nh_.advertise<geometry_msgs::Point>("uvdar_velocity", 1);
             pub_vert_estimator_output_fcu = nh_.advertise<geometry_msgs::Point>("velocity_output",1);
 
             pub_uvdar_pos_debug = nh_.advertise<geometry_msgs::Point>("uvdar_pos_debug",1);
+            pub_thrust_debug = nh_.advertise<geometry_msgs::Point>("thrust_debug",1);
 
             // Subscribers
             sub_garmin_range = nh_.subscribe(range_topic, 1, &VerticalEstimator::GarminRange, this);
-            
+            sub_attitude_cmd = nh_.subscribe(attitude_cmd_topic, 1, &VerticalEstimator::ThrustCorrection, this);
+
             sub_main_odom = nh_.subscribe(odom_main_topic, 1, &VerticalEstimator::MainOdom, this );
             sub_imu_odom = nh_.subscribe(odom_imu_topic, 1, &VerticalEstimator::ImuOdom, this);
             sub_state_odom = nh_.subscribe(odom_state_topic, 1, &VerticalEstimator::StateOdom, this);
+            
             //}
 
             /* UAVs initialization //{ */
@@ -865,7 +871,7 @@ namespace vertical_estimator
                                     geometry_msgs::Point B;
                                     B.x = A.x + cos(nb_hdg + focal_heading);
                                     B.y = A.y + sin(nb_hdg + focal_heading);
-                                    B.z = A.z + 0.08*sin(Quat2Eul(nb.quat));
+                                    B.z = A.z + 0.1*sin(Quat2Eul(nb.quat));
                                     // B.z = A.z ;
                                     geometry_msgs::Point C;
                                     C.x = agents[aid].nb_filter_state.x(0);
@@ -874,7 +880,7 @@ namespace vertical_estimator
                                     geometry_msgs::Point D;
                                     D.x = C.x + cos(agents[aid].angle_z + focal_heading);
                                     D.y = C.y + sin(agents[aid].angle_z + focal_heading);
-                                    D.z = C.z + 0.08*sin(Quat2Eul(agents[aid].quat));
+                                    D.z = C.z + 0.1*sin(Quat2Eul(agents[aid].quat));
                                     // D.z = C.z ;          
 
                                     geometry_msgs::Point dirAB, dirCD;
@@ -970,13 +976,13 @@ namespace vertical_estimator
 
                                             if(dist_z > 0.0){
                                             // can write more elaborative cases
-                                            if(intersectionAB.z < 0 && intersectionCD.z < 0){
-                                                new_int.x = (intersectionAB.x + intersectionCD.x)/2.0;
-                                                new_int.y = (intersectionAB.y + intersectionCD.y)/2.0;
-                                            }
+                                            // if(intersectionAB.z < 0 && intersectionCD.z < 0){
+                                            //     new_int.x = (intersectionAB.x + intersectionCD.x)/2.0;
+                                            //     new_int.y = (intersectionAB.y + intersectionCD.y)/2.0;
+                                            // }
                                             if(dirAB.z < 0.0 && dirCD.z < 0.0){
                                               new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 - (dist_x/2.0);
-                                              new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 - (dist_x/2.0);
+                                              new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 - (dist_y/2.0);
                                               new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 - (dist_z/2.0);
                                                 if(new_int.z < 0){
                                                     ROS_ERROR("Line 714 calc");
@@ -988,7 +994,7 @@ namespace vertical_estimator
                                                 }
                                             }
                                             else if(dirAB.z > 0.0 && dirCD.z > 0.0){
-                                                new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 + (dist_y/2.0);
+                                                new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 + (dist_x/2.0);
                                                 new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 + (dist_y/2.0);
                                                 new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 + (dist_z/2.0);
                                                 if(new_int.z < 00){
@@ -1718,6 +1724,26 @@ namespace vertical_estimator
             // {
             //     ROS_ERROR("LKF failed: %s", e.what());
             // }
+
+            // try 
+            // {
+            //     neighbor_filter->H << 0, 0, 0, 0, 1, 0, 0,
+            //                         0, 0, 0, 0, 0, 0, 0,
+            //                       0, 0, 0, 0, 0, 0, 0;
+
+            //     nbR_t R;
+            //     R = Eigen::MatrixXd::Identity(3,3) * 0.1;
+            //     Eigen::VectorXd z(3);
+            //     z(0) = rmsg.range;
+            //     neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
+            //     if(neighbor_filter_statefocal.x(4) < 0){
+            //         ROS_ERROR("Filter error on line 1740");
+            //     }
+            //     last_meas_focal = ros::Time::now();
+            // }
+            // catch([[maybe_unused]] std::exception e){
+            //     ROS_ERROR("LKF failed: %s", e.what());
+            // } 
         }
         //}
         //}
@@ -1760,6 +1786,42 @@ namespace vertical_estimator
 
         }
 
+        void ThrustCorrection(const mrs_msgs::AttitudeCommand thrustnmass) {
+            double mass_estimate = thrustnmass.total_mass;
+
+            double thrust = thrustnmass.thrust;
+
+            double acc_z = thrust/mass_estimate;
+
+            try 
+            {
+                neighbor_filter->H << 0, 0, 0, 0, 0, 0, 1,
+                                    0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 0;
+                nbR_t R;
+                R = Eigen::MatrixXd::Identity(3,3) * 1.0;
+                Eigen::VectorXd z(3);
+                z(0) = thrustnmass.desired_acceleration.z;
+
+                neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
+                if(neighbor_filter_statefocal.x(4) < 0){
+                    ROS_ERROR("Filter error on line 1784");
+                }
+                
+                last_meas_focal = ros::Time::now();
+            }
+            catch([[maybe_unused]] std::exception e) {
+                ROS_ERROR("LKF failed: %s", e.what());
+            }
+
+            geometry_msgs::Point thrust_acc;
+            thrust_acc.x = thrustnmass.desired_acceleration.z;
+            thrust_acc.z = acc_z;
+            
+
+            pub_thrust_debug.publish(thrust_acc);
+        }
+
     private:
         /* Global variables //{ */
         /* ROS variables, topics and global bools //{ */
@@ -1791,6 +1853,7 @@ namespace vertical_estimator
         std::vector<ros::Subscriber> sub_uvdar_measurements;
 
         ros::Subscriber sub_garmin_range;
+        ros::Subscriber sub_attitude_cmd;
 
         std::string odom_main_topic;
         std::string odom_state_topic;
@@ -1942,6 +2005,10 @@ namespace vertical_estimator
 
         std::vector<double> vel_outlier;
         std::vector<double> acc_outlier;
+
+        std::string attitude_cmd_topic;
+
+        ros::Publisher pub_thrust_debug;
         // Eigen::MatrixXd output(3,3);
         //}
         //}
