@@ -116,7 +116,7 @@ namespace vertical_estimator
             pub_velocity = nh_.advertise<geometry_msgs::Point>("velocity",1);
             pub_velocity_imu = nh_.advertise<geometry_msgs::Point>("imu_velocity",1);
             pub_acc_imu = nh_.advertise<geometry_msgs::Point>("imu_acc",1);
-
+            pub_debug = nh_.advertise<visualization_msgs::Marker>("debug",1);
             // pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>("range_output", 1); /*vert estimator*/
             pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>(range2_publish_topic, 1);
 
@@ -451,7 +451,7 @@ namespace vertical_estimator
 
                 // xxx
 
-                  visualization_msgs::Marker sphere;
+                visualization_msgs::Marker sphere;
                 sphere.header.frame_id = output_frame;
                 sphere.header.stamp = ros::Time::now();
                 sphere.id = 1; 
@@ -883,92 +883,79 @@ namespace vertical_estimator
                                     D.z = C.z + 0.1*sin(Quat2Eul(agents[aid].quat));
                                     // D.z = C.z ;          
 
-                                    geometry_msgs::Point dirAB, dirCD;
-                                    dirAB.x = B.x - A.x;
-                                    dirAB.y = B.y - A.y;
-                                    dirAB.z = B.z - A.z;
-                                    dirCD.x = D.x - C.x;
-                                    dirCD.y = D.y - C.y;
-                                    dirCD.z = D.z - C.z;
+                                    Eigen::Vector3d dirAB, dirCD;
+                                    dirAB.x() = B.x - A.x;
+                                    dirAB.y() = B.y - A.y;
+                                    dirAB.z() = B.z - A.z;
+                                    dirCD.x() = D.x - C.x;
+                                    dirCD.y() = D.y - C.y;
+                                    dirCD.z() = D.z - C.z;
 
                                     // Vector connecting any arbitrary point on AB to any arbitrary point on CD
-                                    geometry_msgs::Point L;
-                                    L.x = C.x - A.x;
-                                    L.y = C.y - A.y;
-                                    L.z = C.z - A.z;
+                                    Eigen::Vector3d L;
+                                    L.x() = C.x - A.x;
+                                    L.y() = C.y - A.y;
+                                    L.z() = C.z - A.z;
 
-                                    geometry_msgs::Point crossProduct;
-                                    crossProduct.x = dirAB.y * dirCD.z - dirAB.z * dirCD.y;
-                                    crossProduct.y = dirAB.z * dirCD.x - dirAB.x * dirCD.z;
-                                    crossProduct.z = dirAB.x * dirCD.y - dirAB.y * dirCD.x;
+                                    Eigen::Vector3d crossProduct;
+                                    crossProduct = dirAB.cross(dirCD);
+                                    // crossProduct(0) = dirAB.y() * dirCD.z() - dirAB.z() * dirCD.y();
+                                    // crossProduct(1) = dirAB.z() * dirCD.x() - dirAB.x() * dirCD.z();
+                                    // crossProduct(2) = dirAB.x() * dirCD.y() - dirAB.y() * dirCD.x();
 
-                                    double crossProductMagnitude = sqrt(crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y + crossProduct.z * crossProduct.z);
+                                    // double crossProductMagnitude = sqrt(crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y + crossProduct.z * crossProduct.z);
                                     
-                                    if(crossProductMagnitude > 1e-6){
+                                    // if(crossProductMagnitude > 1e-6){
+                                    if((dirAB.x()/dirCD.x()) != (dirAB.y()/dirCD.y()) || (dirAB.x()/dirCD.x()) != (dirAB.z()/dirCD.z())){
                                         // Non zero cross product magnitude indicates skew lines or intersecting lines
                                         // Handle those cases here
                                         
                                         // based on the source: https://www.quora.com/How-do-you-know-if-lines-are-parallel-skew-or-intersecting
-                                        double checkSkewOrIntersect = abs(L.x * crossProduct.x + L.y * crossProduct.y * L.z * crossProduct.z);
+                                        // double checkSkewOrIntersect = abs(L.x * crossProduct.x + L.y * crossProduct.y * L.z * crossProduct.z);
 
-                                       
+                                        Eigen::MatrixXd checkSkeworIntersect;
+                                        checkSkeworIntersect.resize(3,3);
+                                        checkSkeworIntersect << L.x(), L.y(), L.z(),
+                                                            dirAB.x(), dirAB.y(), dirAB.z(),
+                                                            dirCD.x(), dirCD.y(), dirCD.z();
+
+                                        
 
                                         // this set is giving comparatively better results but not sure about mathematical validation of either set
                                         // double tAB = ((C.y - A.y) * dirCD.x - (C.x - A.x) * dirCD.y) / (dirAB.x * dirCD.y - dirAB.y * dirCD.x);
                                         // double tCD = ((A.y - C.y) * dirAB.x - (A.x - C.x) * dirAB.y) / (dirCD.x * dirAB.y - dirCD.y * dirAB.x);
 
-                                        double tAB = ((C.x - A.x) * dirCD.y - (C.y - A.y) * dirCD.x + (C.z - A.z) * dirCD.z) / (dirAB.x * dirCD.y - dirAB.y * dirCD.x + dirAB.z * dirCD.z);
-                                        double tCD = ((A.x - C.x) * dirAB.y - (A.y - C.y) * dirAB.x + (A.z - C.z) * dirAB.z) / (dirCD.x * dirAB.y - dirCD.y * dirAB.x + dirCD.z * dirAB.z);
+                                        //https://math.stackexchange.com/questions/2213165/find-shortest-distance-between-lines-in-3d
+                                        double tAB = ((dirCD.cross(crossProduct)).dot(L))/(crossProduct.dot(crossProduct));
+                                        double tCD = ((dirAB.cross(crossProduct)).dot(L))/(crossProduct.dot(crossProduct));
 
-                                        if(checkSkewOrIntersect > 1e-6){
+                                        // double tAB = ((C.x - A.x) * dirCD.y - (C.y - A.y) * dirCD.x + (C.z - A.z) * dirCD.z) / (dirAB.x * dirCD.y - dirAB.y * dirCD.x + dirAB.z * dirCD.z);
+                                        // double tCD = ((A.x - C.x) * dirAB.y - (A.y - C.y) * dirAB.x + (A.z - C.z) * dirAB.z) / (dirCD.x * dirAB.y - dirCD.y * dirAB.x + dirCD.z * dirAB.z);
+
+                                        // if(checkSkewOrIntersect > 1e-6){
+                                        if( checkSkeworIntersect.determinant() != 0) {
                                             // Skew lines
-                                            geometry_msgs::Point intersectionAB; 
-                                            intersectionAB.x = A.x + tAB * dirAB.x;
-                                            intersectionAB.y = A.y + tAB * dirAB.y;
-                                            intersectionAB.z = A.z + tAB * dirAB.z;
+                                            // https://www.quora.com/How-do-I-find-the-shortest-distance-between-two-skew-lines
+                                            geometry_msgs::Point intersectionAB;  
+                                            intersectionAB.x = A.x + tAB * dirAB.x();
+                                            intersectionAB.y = A.y + tAB * dirAB.y();
+                                            intersectionAB.z = A.z + tAB * dirAB.z();
 
                                             geometry_msgs::Point intersectionCD;
-                                            intersectionCD.x = C.x + tCD * dirCD.x;
-                                            intersectionCD.y = C.y + tCD * dirCD.y;
-                                            intersectionCD.z = C.z + tCD * dirCD.z;
+                                            intersectionCD.x = C.x + tCD * dirCD.x();
+                                            intersectionCD.y = C.y + tCD * dirCD.y();
+                                            intersectionCD.z = C.z + tCD * dirCD.z();
 
-                                            // double dotABCD = dirAB.x * dirCD.x + dirAB.y * dirCD.y + dirAB.z * dirCD.z;
-                                        
-                                            // double dotAB = dirAB.x * dirAB.x + dirAB.y * dirAB.y + dirAB.z * dirAB.z;
-    
-                                            // double dotCD = dirCD.x * dirCD.x + dirCD.y * dirCD.y + dirCD.z * dirCD.z;
-    
-                                            // double dotLAB = L.x * dirAB.x + L.y * dirAB.y + L.z * dirAB.z;
-    
-                                            // double dotLCD = L.x * dirCD.x + L.y * dirCD.y * L.z * dirCD.z;
-    
-                                            // double t = ((dotLAB * dotCD) - (dotABCD * dotLCD) )/((dotAB * dotCD) - (dotABCD * dotABCD));
-    
-                                            // double s = -1*((dotAB * dotLCD) - (dotLAB * dotABCD))/((dotAB * dotCD) - (dotABCD * dotABCD));
-    
-                                            // geometry_msgs::Point intersectionAB;
-                                            // intersectionAB.x = A.x + t * dirAB.x;
-                                            // intersectionAB.y = A.x + t * dirAB.y;
-                                            // intersectionAB.z = A.x + t * dirAB.z;
-    
-                                            // geometry_msgs::Point intersectionCD;
-                                            // intersectionCD.x = C.x + s * dirCD.x;
-                                            // intersectionCD.y = C.x + s * dirCD.y;
-                                            // intersectionCD.z = C.x + s * dirCD.z;
+                                            Eigen::Vector3d unitVector = crossProduct.normalized();
 
-                                            // double dx = intersectionAB.x - intersectionCD.x;
-                                            // double dy = intersectionAB.y - intersectionCD.y;
-                                            // double dz = intersectionAB.z - intersectionCD.z;
+                                            double minDistance = abs(L.dot(crossProduct))/crossProduct.norm();
 
-                                            // double minDistance = sqrt(L.x * L.x + L.y * L.y + L.z * L.z);
+                                            Eigen::Vector3d distanceComponents = minDistance * crossProduct.normalized();
 
-                                            // double minDistance = sqrt(dx * dx + dy * dy + dz * dz);
-                                            
-                                            // https://www.quora.com/How-do-I-find-the-shortest-distance-between-two-skew-lines
-                                            double minDistance = abs(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z)/(crossProductMagnitude);
-                                            double dist_z = abs(L.x * crossProduct.x)/crossProductMagnitude;
-                                            double dist_x = abs(L.y * crossProduct.y)/crossProductMagnitude;
-                                            double dist_y = abs(L.z * crossProduct.z)/crossProductMagnitude;
+                                            double dist_z = distanceComponents.z();
+                                            double dist_y = distanceComponents.y();
+                                            double dist_x = distanceComponents.x();
+
 
                                             if(minDistance == dist_z){
                                                 ROS_WARN("Values are same!No issue here");
@@ -980,95 +967,99 @@ namespace vertical_estimator
                                             //     new_int.x = (intersectionAB.x + intersectionCD.x)/2.0;
                                             //     new_int.y = (intersectionAB.y + intersectionCD.y)/2.0;
                                             // }
-                                            if(dirAB.z < 0.0 && dirCD.z < 0.0){
-                                              new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 - (dist_x/2.0);
-                                              new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 - (dist_y/2.0);
-                                              new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 - (dist_z/2.0);
-                                                if(new_int.z < 0){
-                                                    ROS_ERROR("Line 714 calc");
-                                                    new_int.z = (A.z + C.z)/2.0 - (dist_z/2.0);
-                                                    if(new_int.z < 0.0){
-                                                        ROS_ERROR("Still negative at 714");
-                                                        new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
-                                                    }
-                                                }
-                                            }
-                                            else if(dirAB.z > 0.0 && dirCD.z > 0.0){
-                                                new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 + (dist_x/2.0);
-                                                new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 + (dist_y/2.0);
-                                                new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 + (dist_z/2.0);
-                                                if(new_int.z < 00){
-                                                    ROS_ERROR("Line 720 calc");
-                                                    new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
-                                                    if(new_int.z < 0.0){
-                                                        ROS_ERROR("Still negative at 720");
+                                            new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 + (dist_x/2.0);
+                                            new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 + (dist_y/2.0);
+                                            new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 + (dist_z/2.0);
+                                            ROS_WARN("Skew Lines");
+                                            // if(dirAB.z() < 0.0 && dirCD.z() < 0.0){
+                                            //   new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 - (dist_x/2.0);
+                                            //   new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 - (dist_y/2.0);
+                                            //   new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 - (dist_z/2.0);
+                                            //     if(new_int.z < 0){
+                                            //         ROS_ERROR("Line 714 calc");
+                                            //         new_int.z = (A.z + C.z)/2.0 - (dist_z/2.0);
+                                            //         if(new_int.z < 0.0){
+                                            //             ROS_ERROR("Still negative at 714");
+                                            //             new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
+                                            //         }
+                                            //     }
+                                            // }
+                                            // else if(dirAB.z > 0.0 && dirCD.z > 0.0){
+                                            //     new_int.x = (intersectionAB.x + intersectionCD.x)/2.0 + (dist_x/2.0);
+                                            //     new_int.y = (intersectionAB.y + intersectionCD.y)/2.0 + (dist_y/2.0);
+                                            //     new_int.z = (intersectionAB.z + intersectionCD.z)/2.0 + (dist_z/2.0);
+                                            //     if(new_int.z < 00){
+                                            //         ROS_ERROR("Line 720 calc");
+                                            //         new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
+                                            //         if(new_int.z < 0.0){
+                                            //             ROS_ERROR("Still negative at 720");
                                                         
-                                                    }
-                                                }
-                                            }
-                                            else {
-                                                ROS_WARN("Opposite Slopes");
-                                                if(intersectionAB.z < intersectionCD.z){
-                                                    new_int.x = intersectionAB.x + (dist_x/2.0);
-                                                    new_int.y = intersectionAB.y + (dist_y/2.0);
-                                                    double calc_z = intersectionAB.z + (dist_z/2.0);
-                                                    // new_int.z = calc_z;
-                                                    if(calc_z < 0.0){
-                                                        new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
-                                                    } else {
-                                                        new_int.z = calc_z;
-                                                    }
-                                                    if(new_int.z < 00){
-                                                    ROS_ERROR("Line 728 calc");
-                                                }
-                                                }
-                                                else if (intersectionCD.z < intersectionAB.z){
-                                                    new_int.x = intersectionCD.x + (dist_x/2.0);
-                                                    new_int.y = intersectionCD.y + (dist_y/2.0);
-                                                    double calc_z = intersectionCD.z + (dist_z/2.0);
-                                                    // new_int.z = calc_z;
-                                                    if(calc_z < 0){
-                                                        new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
-                                                    } else {
-                                                        new_int.z = calc_z;
-                                                    }
-                                                    if(new_int.z < 00){
-                                                    ROS_ERROR("Line 734 calc");
-                                                }
-                                                }
-                                            }                                            
+                                            //         }
+                                            //     }
+                                            // }
+                                            // else {
+                                            //     ROS_WARN("Opposite Slopes");
+                                            //     if(intersectionAB.z < intersectionCD.z){
+                                            //         new_int.x = intersectionAB.x + (dist_x/2.0);
+                                            //         new_int.y = intersectionAB.y + (dist_y/2.0);
+                                            //         double calc_z = intersectionAB.z + (dist_z/2.0);
+                                            //         // new_int.z = calc_z;
+                                            //         if(calc_z < 0.0){
+                                            //             new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
+                                            //         } else {
+                                            //             new_int.z = calc_z;
+                                            //         }
+                                            //         if(new_int.z < 00){
+                                            //         ROS_ERROR("Line 728 calc");
+                                            //     }
+                                            //     }
+                                            //     else if (intersectionCD.z < intersectionAB.z){
+                                            //         new_int.x = intersectionCD.x + (dist_x/2.0);
+                                            //         new_int.y = intersectionCD.y + (dist_y/2.0);
+                                            //         double calc_z = intersectionCD.z + (dist_z/2.0);
+                                            //         // new_int.z = calc_z;
+                                            //         if(calc_z < 0){
+                                            //             new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
+                                            //         } else {
+                                            //             new_int.z = calc_z;
+                                            //         }
+                                            //         if(new_int.z < 00){
+                                            //         ROS_ERROR("Line 734 calc");
+                                            //     }
+                                            //     }
+                                            // }                                            
                                             }
 
                                         }
-                                        else {
+                                        else if(checkSkeworIntersect.determinant() == 0) {
                                             // Intersecting lines
 
-                                            double k = crossProductMagnitude;
-                                            geometry_msgs::Point crossdirCDandL;
-                                            crossdirCDandL.x = dirCD.y * L.z - dirCD.z * L.y;
-                                            crossdirCDandL.y = dirCD.z * L.x - dirCD.x * L.z;
-                                            crossdirCDandL.z = dirCD.x * L.y - dirCD.y * L.x;
+                                            double k = crossProduct.norm();
 
-                                            double h = sqrt(crossdirCDandL.x * crossdirCDandL.x + crossdirCDandL.y * crossdirCDandL.y + crossdirCDandL.z * crossdirCDandL.z);
+                                            Eigen::Vector3d crossCDandL;
+                                            crossCDandL = dirAB.cross(L);
 
-                                            if((crossdirCDandL.x * crossProduct.x + crossdirCDandL.y * crossProduct.y + crossdirCDandL.z * crossProduct.z) > 0){
-                                                new_int.x = A.x + (h/k) * dirAB.x;
-                                                new_int.y = A.y + (h/k) * dirAB.y;
-                                                new_int.z =  A.z + (h/k) * dirAB.z;
+                                            double h = crossCDandL.norm();
+
+
+                                            if(crossCDandL.dot(crossProduct) > 0){
+                                                new_int.x = A.x + (h/k) * dirAB.x();
+                                                new_int.y = A.y + (h/k) * dirAB.y();
+                                                new_int.z =  A.z + (h/k) * dirAB.z();
                                                 if(new_int.z < 00){
                                                     ROS_ERROR("Line 755 calc");
 
                                                 }
                                             } else {
-                                                new_int.x = A.x - (h/k) * dirAB.x;
-                                                new_int.y = A.y - (h/k) * dirAB.y;
-                                                new_int.z = A.z - (h/k) * dirAB.z;
+                                                new_int.x = A.x - (h/k) * dirAB.x();
+                                                new_int.y = A.y - (h/k) * dirAB.y();
+                                                new_int.z = A.z - (h/k) * dirAB.z();
                                                 if(new_int.z < 00){
                                                     ROS_ERROR("Line 760 calc");
 
                                                 }
                                             }
-                                            
+                                            ROS_WARN("Intersecting Lines");
                                             
                                         }
                                     } 
@@ -1078,13 +1069,18 @@ namespace vertical_estimator
 
                                         ROS_ERROR("Parallel Lines!!");
                                         
-                                        double minDistance = abs(L.x * crossProduct.x + L.y * crossProduct.y + L.z * crossProduct.z)/(crossProductMagnitude);
+                                        double minDistance = abs(L.dot(crossProduct))/crossProduct.norm();
+                                        Eigen::Vector3d distanceComponents = minDistance * crossProduct.normalized();
+
+                                        double dist_z = distanceComponents.z();
+                                        double dist_y = distanceComponents.y();
+                                        double dist_x = distanceComponents.x();
                                         
                                         // write in a more elaborative manner
                                         
-                                        new_int.x = (A.x + C.x)/2.0 + (minDistance/2.0);
-                                        new_int.y = (A.y + C.y)/2.0 + (minDistance/2.0);
-                                        new_int.z = (A.z + C.z)/2.0 + (minDistance/2.0);
+                                        new_int.x = (A.x + C.x)/2.0 + (dist_x/2.0);
+                                        new_int.y = (A.y + C.y)/2.0 + (dist_y/2.0);
+                                        new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
                                         
                                     }
 
@@ -1538,7 +1534,7 @@ namespace vertical_estimator
             //     az_linear = 0.0;
             // }
 
-            if(acc_outlier.back() - az_linear > 1.00 || acc_outlier.back() - az_linear < -1.000){
+            if(acc_outlier.back() - az_linear > 1.20 || acc_outlier.back() - az_linear < -1.200){
                 ROS_WARN("REPLACING acc %f with acc %f", az_linear, acc_outlier.back());
                 az_linear = acc_outlier.back();
             }
@@ -1799,9 +1795,9 @@ namespace vertical_estimator
                                     0, 0, 0, 0, 0, 0, 0,
                                     0, 0, 0, 0, 0, 0, 0;
                 nbR_t R;
-                R = Eigen::MatrixXd::Identity(3,3) * 1.0;
+                R = Eigen::MatrixXd::Identity(3,3) * 0.01;
                 Eigen::VectorXd z(3);
-                z(0) = thrustnmass.desired_acceleration.z;
+                z(0) = acc_z;
 
                 neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
                 if(neighbor_filter_statefocal.x(4) < 0){
