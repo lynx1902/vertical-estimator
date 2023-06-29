@@ -710,7 +710,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /uav29/state_estimator/debug
+      Marker Topic: /uav29/vertical_estimator/debug
       Name: MarkerArray
       Namespaces:
         {}

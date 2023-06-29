@@ -184,6 +184,7 @@ windows:
           /uav29/odometry/imu_untilted 
           /uav29/garmin/range2
           /uav29/ground_truth
+          /uav29/vertical_estimator/debug
           /uav30/vertical_estimator/range_output 
           /uav30/vertical_estimator/uvdar_velocity 
           /uav30/vertical_estimator/imu_velocity 
