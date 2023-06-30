@@ -33,6 +33,7 @@
 #define Ve 1 // velocity
 #define Ac 2 // acceleration
 
+
 namespace mrs_lib
 {
     // const int n_states = 3;
@@ -118,6 +119,7 @@ namespace vertical_estimator
             // Publishers
             pub_debug_position = nh_.advertise<visualization_msgs::Marker>("debug_position",1);
             pub_debug = nh_.advertise<visualization_msgs::MarkerArray>("debug",1);
+            pub_uvdar_debug = nh_.advertise<visualization_msgs::Marker>("uvdar_debug",1);
 
             pub_velocity_imu = nh_.advertise<geometry_msgs::Point>("imu_velocity",1);
             pub_acc_imu = nh_.advertise<geometry_msgs::Point>("imu_acc",1);
@@ -302,9 +304,7 @@ namespace vertical_estimator
                 0, 0, 0, 0, 0, 0, 1.0;
               
 
-            /* what is std::make_unique*/
-            // filter = std::make_unique<mrs_lib::lkf_t>(A, B, H);
-
+            
             neighbor_filter = std::make_unique<mrs_lib::nblkf_t>(nbA, nbB, nbH);
 
             last_imu_meas = ros::Time::now();
@@ -365,17 +365,12 @@ namespace vertical_estimator
                     
                 }
 
-                // const u_t u = u_t::Random();
+                
                 const nbu_t nbu = nbu_t::Random();
 
                 double new_dt = std::fmax(
                     std::fmin((ros::Time::now() - last_updt_focal).toSec(), (ros::Time::now() - last_meas_focal).toSec()), 0.0);
-                // filter->A = A_dt(new_dt);
                 
-                // filter_state_focal = filter->predict(filter_state_focal, u, Qq, new_dt);
-
-                
-
                 neighbor_filter->A = nbA_dt(new_dt);
 
                 neighbor_filter_statefocal = neighbor_filter->predict(neighbor_filter_statefocal, nbu, nbQq, new_dt);
@@ -471,7 +466,7 @@ namespace vertical_estimator
 
                 arrow.pose.position.x = nb.nb_filter_state.x(0);
                 arrow.pose.position.y = nb.nb_filter_state.x(2);
-                arrow.pose.position.z = neighbor_filter_statefocal.x(4);
+                arrow.pose.position.z = nb.nb_filter_state.x(4);
 
                 arrow.pose.orientation = mrs_lib::AttitudeConverter(0, 0, focal_heading);
                 arrow.scale.x = 1.0;
@@ -748,6 +743,8 @@ namespace vertical_estimator
                         agents[aid].pfcu_init = true;
                         agents[aid].angle_z = atan2(agents[aid].pfcu.y,agents[aid].pfcu.x);
                         agents[aid].quat = res_b_.value().pose.pose.orientation;
+                       
+                        
 
                         for (auto &nb : agents)
                         {
@@ -783,26 +780,28 @@ namespace vertical_estimator
                                  geometry_msgs::Point new_int;
 
                                 if (gap > lgl && gap < ugl)
+
                                 {   
-                                    
+                                    /* NON Workin Intersection Calculation //{ */
                                     geometry_msgs::Point A;
                                     A.x = nb.nb_filter_state.x(0);
                                     A.y = nb.nb_filter_state.x(2);
                                     A.z = nb.nb_filter_state.x(4);
+
                                     geometry_msgs::Point B;
                                     B.x = A.x + cos(nb_hdg + focal_heading);
                                     B.y = A.y + sin(nb_hdg + focal_heading);
-                                    B.z = A.z + 0.1*sin(Quat2Eul(nb.quat));
-                                    // B.z = A.z ;
+                                    B.z = A.z + 0.1*sin(Quat2Eul(nb.quat)*(M_PI/180));
+                                    
                                     geometry_msgs::Point C;
                                     C.x = agents[aid].nb_filter_state.x(0);
                                     C.y = agents[aid].nb_filter_state.x(2);
                                     C.z = agents[aid].nb_filter_state.x(4); /*need to calculate actual value*/
                                     geometry_msgs::Point D;
+
                                     D.x = C.x + cos(agents[aid].angle_z + focal_heading);
                                     D.y = C.y + sin(agents[aid].angle_z + focal_heading);
-                                    D.z = C.z + 0.1*sin(Quat2Eul(agents[aid].quat));
-                                    // D.z = C.z ;          
+                                    D.z = C.z + 0.1*sin(Quat2Eul(agents[aid].quat)*(M_PI/180));
 
                                     Eigen::Vector3d dirAB, dirCD;
                                     dirAB(0) = B.x - A.x;
@@ -820,42 +819,21 @@ namespace vertical_estimator
 
                                     Eigen::Vector3d crossProduct;
                                     crossProduct = dirAB.cross(dirCD);
-                                    // crossProduct(0) = dirAB.y() * dirCD.z() - dirAB.z() * dirCD.y();
-                                    // crossProduct(1) = dirAB.z() * dirCD.x() - dirAB.x() * dirCD.z();
-                                    // crossProduct(2) = dirAB.x() * dirCD.y() - dirAB.y() * dirCD.x();
-
-                                    // double crossProductMagnitude = sqrt(crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y + crossProduct.z * crossProduct.z);
-                                    
-                                    // if(crossProductMagnitude > 1e-6){
+                                  
                                     if(crossProduct.norm() > 1e-6){
                                         // Non zero cross product magnitude indicates skew lines or intersecting lines
                                         // Handle those cases here
                                         
                                         // based on the source: https://www.quora.com/How-do-you-know-if-lines-are-parallel-skew-or-intersecting
-                                        // double checkSkewOrIntersect = abs(L.x * crossProduct.x + L.y * crossProduct.y * L.z * crossProduct.z);
-
-                                        // Eigen::MatrixXd checkSkeworIntersect;
-                                        // checkSkeworIntersect.resize(3,3);
-                                        // checkSkeworIntersect << L(0), L(1), L(2),
-                                                            // dirAB(0), dirAB(1), dirAB(2),
-                                                        //    dirCD(0), dirCD(1), dirCD(2);
-
                                         double checkSkeworIntersect = L.dot(crossProduct);
 
 
-                                        // this set is giving comparatively better results but not sure about mathematical validation of either set
-                                        // double tAB = ((C.y - A.y) * dirCD.x - (C.x - A.x) * dirCD.y) / (dirAB.x * dirCD.y - dirAB.y * dirCD.x);
-                                        // double tCD = ((A.y - C.y) * dirAB.x - (A.x - C.x) * dirAB.y) / (dirCD.x * dirAB.y - dirCD.y * dirAB.x);
-
+                                        
                                         //https://math.stackexchange.com/questions/2213165/find-shortest-distance-between-lines-in-3d
                                         double tAB = ((dirCD.cross(crossProduct)).dot(L))/(crossProduct.dot(crossProduct));
                                         double tCD = ((dirAB.cross(crossProduct)).dot(L))/(crossProduct.dot(crossProduct));
 
-                                        // double tAB = ((C.x - A.x) * dirCD.y - (C.y - A.y) * dirCD.x + (C.z - A.z) * dirCD.z) / (dirAB.x * dirCD.y - dirAB.y * dirCD.x + dirAB.z * dirCD.z);
-                                        // double tCD = ((A.x - C.x) * dirAB.y - (A.y - C.y) * dirAB.x + (A.z - C.z) * dirAB.z) / (dirCD.x * dirAB.y - dirCD.y * dirAB.x + dirCD.z * dirAB.z);
-
                                         if(checkSkeworIntersect > 1e-6){
-                                        // if( checkSkeworIntersect.determinant() != 0) {
                                             // Skew lines
                                             // https://www.quora.com/How-do-I-find-the-shortest-distance-between-two-skew-lines
                                             geometry_msgs::Point intersectionAB;  
@@ -883,14 +861,6 @@ namespace vertical_estimator
                                             }
 
                                             if(dist_z > 0.0){
-                                            // can write more elaborative cases
-                                            // if(intersectionAB.z < 0 && intersectionCD.z < 0){
-                                            //     new_int.x = (intersectionAB.x + intersectionCD.x)/2.0;
-                                            //     new_int.y = (intersectionAB.y + intersectionCD.y)/2.0;
-                                            // // }
-                                            // new_int.x = (intersectionAB.x + intersectionCD.x)/2.0;
-                                            // new_int.y = (intersectionAB.y + intersectionCD.y)/2.0;
-                                            // new_int.z = (intersectionAB.z + intersectionCD.z)/2.0;
                                             ROS_WARN("Skew Lines");
                                             if(dirAB(2) < 0.0 && dirCD(2) < 0.0){
                                               new_int.x = (intersectionAB.x + intersectionCD.x)/2.0;
@@ -955,7 +925,6 @@ namespace vertical_estimator
                                             }
 
                                         }
-                                        // else if(checkSkeworIntersect.determinant() == 0) {
                                         else{
                                             // Intersecting lines
                                             // https://math.stackexchange.com/questions/270767/find-intersection-of-two-3d-lines
@@ -1001,13 +970,18 @@ namespace vertical_estimator
                                         double dist_y = abs(distanceComponents(1));
                                         double dist_x = abs(distanceComponents(0));
                                         
-                                        // write in a more elaborative manner
                                         
-                                        new_int.x = (A.x + C.x)/2.0 + (dist_x/2.0);
-                                        new_int.y = (A.y + C.y)/2.0 + (dist_y/2.0);
-                                        new_int.z = (A.z + C.z)/2.0 + (dist_z/2.0);
                                         
+                                        new_int.x = (A.x)/2.0 + (dist_x/2.0);
+                                        new_int.y = (A.y)/2.0 + (dist_y/2.0);
+                                        new_int.z = (A.z)/2.0 + (dist_z/2.0);
+                                    
                                     }
+                                
+                                    // }
+
+                                    
+                                
 
                                     geometry_msgs::Point uvdar_pos_debug;
                                     uvdar_pos_debug.x = new_int.x;
@@ -1474,8 +1448,7 @@ namespace vertical_estimator
             }
         }
 
-        void
-        GarminRange(const sensor_msgs::Range &rangemsg)
+        void GarminRange(const sensor_msgs::Range &rangemsg)
         {   
             sensor_msgs::Range rmsg = rangemsg;
             rangemsg_vector.push_back(rangemsg);
@@ -1531,7 +1504,9 @@ namespace vertical_estimator
 
             std::string output_frame = estimation_frame;
 
-            th_frame = transformer_->getTransform(tmass_local.header.frame_id, output_frame, ros::Time(0));
+            att_quat = tmass_local.attitude;
+
+            // th_frame = transformer_->getTransform(tmass_local.header.frame_id, output_frame, ros::Time(0));
             
             // tf2lf_ = transformer_->getTransform(msg_local.header.frame_id, output_frame, ros::Time(0));
             // if (!th_frame)
@@ -1733,6 +1708,8 @@ namespace vertical_estimator
             double angle_z;
 
             geometry_msgs::Quaternion quat;
+
+            geometry_msgs::Point focal_dist;
         };
 
         std::vector<Neighbor> agents;
@@ -1780,6 +1757,10 @@ namespace vertical_estimator
         };
 
         thrustandMass tmass;
+
+        geometry_msgs::Quaternion att_quat;
+
+        ros::Publisher pub_uvdar_debug;
         // Eigen::MatrixXd output(3,3);
         //}
         //}
