@@ -130,10 +130,10 @@ windows:
   - slow_down:
       layout: even-vertical
       panes:
-        - waitForSimulation; waitForRos; sleep 15; gz physics -u 60
-        - waitForSimulation; waitForRos; sleep 20; gz physics -u 60
-        - waitForSimulation; waitForRos; sleep 25; gz physics -u 60
-        - waitForSimulation; waitForRos; sleep 30; gz physics -u 60
+        - waitForSimulation; waitForRos; sleep 15; gz physics -u 50
+        - waitForSimulation; waitForRos; sleep 20; gz physics -u 50
+        - waitForSimulation; waitForRos; sleep 25; gz physics -u 50
+        - waitForSimulation; waitForRos; sleep 30; gz physics -u 50
   # - rqt_graph:
   #     layout: tiled
   #     panes:
@@ -180,11 +180,13 @@ windows:
           /uav29/vertical_estimator/velocity_output 
           /uav29/vertical_estimator/imu_acc
           /uav29/vertical_estimator/thrust_debug
-          /uav29/odometry/odom_main 
-          /uav29/odometry/imu_untilted 
           /uav29/garmin/range2
           /uav29/ground_truth
+          /uav29/vertical_estimator/ground_truth
           /uav29/vertical_estimator/debug
+          /uav29/odometry/odom_main
+          /uav29/odometry/imu_untilted
+
           /uav30/vertical_estimator/range_output 
           /uav30/vertical_estimator/uvdar_velocity 
           /uav30/vertical_estimator/imu_velocity 

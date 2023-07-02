@@ -22,10 +22,16 @@
 #include <sensor_msgs/Range.h>
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/Point.h>
-#include <tf/tf.h>
-#include <tf/transform_datatypes.h>
+// #include <tf/tf.h>
+// #include <tf/transform_datatypes.h>
 #include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <mrs_msgs/AttitudeCommand.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <std_msgs/Float64.h>
+#include <mrs_msgs/Float64Stamped.h>
+
 
 
 /* Filter preliminary //{ */
@@ -103,9 +109,14 @@ namespace vertical_estimator
 
             param_loader.loadParam("range_topic", range_topic);
             param_loader.loadParam("range2_publish_topic", range2_publish_topic);
-            param_loader.loadParam("attitude_cmd_topic", attitude_cmd_topic);
+            param_loader.loadParam("cmd_odom_topic", cmd_odom_topic);
+            param_loader.loadParam("ground_truth_topic", ground_truth_topic);
+            param_loader.loadParam("mass_estimate_topic", mass_estimate_topic);
+            param_loader.loadParam("thrust_force_topic",thrust_force_topic);
 
             estimation_frame = uav_name + "/gps_origin";
+            body_frame = uav_name + "/fcu_untilted";
+
 
             //}
 
@@ -133,9 +144,16 @@ namespace vertical_estimator
             pub_uvdar_pos_debug = nh_.advertise<geometry_msgs::Point>("uvdar_pos_debug",1);
             pub_thrust_debug = nh_.advertise<geometry_msgs::Point>("thrust_debug",1);
 
+            pub_pitch = nh_.advertise<geometry_msgs::Point>("pitch_angle",1);
+
+            pub_ground_truth = nh_.advertise<nav_msgs::Odometry>("ground_truth",1);
+
             // Subscribers
             sub_garmin_range = nh_.subscribe(range_topic, 1, &VerticalEstimator::GarminRange, this);
-            sub_attitude_cmd = nh_.subscribe(attitude_cmd_topic, 1, &VerticalEstimator::ThrustCorrection, this);
+            sub_attitude_cmd = nh_.subscribe(cmd_odom_topic, 1, &VerticalEstimator::ThrustCorrection, this);
+            sub_ground_truth = nh_.subscribe(ground_truth_topic, 1, &VerticalEstimator::GroundTruth, this);
+            sub_mass_estimate = nh_.subscribe(mass_estimate_topic, 1, &VerticalEstimator::MassEstimate, this);
+            sub_thrust_force = nh_.subscribe(thrust_force_topic,1, &VerticalEstimator::ThrustCorrection, this);
 
             sub_main_odom = nh_.subscribe(odom_main_topic, 1, &VerticalEstimator::MainOdom, this );
             sub_imu_odom = nh_.subscribe(odom_imu_topic, 1, &VerticalEstimator::ImuOdom, this);
@@ -340,6 +358,8 @@ namespace vertical_estimator
                 /* getIMUvelocity(); */
 
                 ROS_WARN_THROTTLE(3.0, "Estimation frame %s", estimation_frame.c_str());
+                ROS_WARN_THROTTLE(3.0, "Body frame %s", body_frame.c_str());
+
 
                 for (auto &nb : agents)
                 {
@@ -690,7 +710,8 @@ namespace vertical_estimator
                 return;
             }
 
-            output_frame = uav_name + "/fcu_untilted";
+            // output_frame = uav_name + "/fcu_untilted";
+            output_frame = body_frame;
             tf2bf_ = transformer_->getTransform(msg_local.header.frame_id, output_frame, ros::Time(0));
             if (!tf2bf_)
             {
@@ -742,7 +763,8 @@ namespace vertical_estimator
                         agents[aid].hdg_at_last_pfcu = focal_heading;
                         agents[aid].pfcu_init = true;
                         agents[aid].angle_z = atan2(agents[aid].pfcu.y,agents[aid].pfcu.x);
-                        agents[aid].quat = res_b_.value().pose.pose.orientation;
+                        // agents[aid].quat = res_b_.value().pose.pose.orientation;
+                        agents[aid].quat = res_l_.value().pose.pose.orientation;
                        
                         
 
@@ -976,12 +998,37 @@ namespace vertical_estimator
                                         new_int.y = (A.y)/2.0 + (dist_y/2.0);
                                         new_int.z = (A.z)/2.0 + (dist_z/2.0);
                                     
-                                    }
+                                    } 
                                 
-                                    // }
+                                    // } /Uncomment before this line */
 
+                                    /*Method 2 */
+                                    // geometry_msgs::Point nb1_pos;
+                                    // nb1_pos.x = nb.nb_filter_state.x(0);
+                                    // nb1_pos.y = nb.nb_filter_state.x(2);
+                                    // nb1_pos.z = nb.nb_filter_state.x(4);
+
+                                    // geometry_msgs::Point nb2_pos;
+                                    // nb2_pos.x = agents[aid].nb_filter_state.x(0);
+                                    // nb2_pos.y = agents[aid].nb_filter_state.x(2);
+                                    // nb2_pos.z = agents[aid].nb_filter_state.x(4);
+
+                                    // geometry_msgs::Point nb1_rel = calculateRelativePosition(nb1_pos,nb2_pos);
+
+                                    // geometry_msgs::Point nb2_rel = calculateRelativePosition(nb2_pos,nb1_pos);
                                     
+                                    // geometry_msgs::Point transformedPos1 = applyCoordinateTransformations(nb1_rel, nb.quat);
+                                    // geometry_msgs::Point transformedPos2 = applyCoordinateTransformations(nb2_rel, agents[aid].quat);
+
+                                    // geometry_msgs::Point averageRelativePos;
+                                    // averageRelativePos.x = (transformedPos1.x + transformedPos2.x) / 2.0;
+                                    // averageRelativePos.y = (transformedPos1.y + transformedPos2.y) / 2.0;
+                                    // averageRelativePos.z = (transformedPos1.z + transformedPos2.z) / 2.0;
                                 
+                                    // new_int.x = nb1_pos.x + averageRelativePos.x;
+                                    // new_int.y = nb1_pos.y + averageRelativePos.y;
+                                    // new_int.z = nb1_pos.z + averageRelativePos.z;
+                                    /*End of method 2*/
 
                                     geometry_msgs::Point uvdar_pos_debug;
                                     uvdar_pos_debug.x = new_int.x;
@@ -1306,6 +1353,40 @@ namespace vertical_estimator
             }
         }
 
+        double calculateDistance(const geometry_msgs::Point& point1, const geometry_msgs::Point& point2) {
+            double dx = point2.x - point1.x;
+            double dy = point2.y - point1.y;
+            double dz = point2.z - point1.z;
+            return std::sqrt(dx*dx + dy*dy + dz*dz);
+        }
+
+        geometry_msgs::Point applyCoordinateTransformations(const geometry_msgs::Point& relativePos, const geometry_msgs::Quaternion& orientation) {
+            // Convert the quaternion to a rotation matrix using Eigen
+            Eigen::Quaterniond q(orientation.w, orientation.x, orientation.y, orientation.z);
+            Eigen::Matrix3d rotationMatrix = q.normalized().toRotationMatrix();
+        
+            // Apply the rotation to the relative position using the rotation matrix
+            Eigen::Vector3d relativePosition(relativePos.x, relativePos.y, relativePos.z);
+            Eigen::Vector3d transformedPosition = rotationMatrix * relativePosition;
+        
+            // Convert the transformed position back to geometry_msgs::Point type
+            geometry_msgs::Point transformedPos;
+            transformedPos.x = transformedPosition.x();
+            transformedPos.y = transformedPosition.y();
+            transformedPos.z = transformedPosition.z();
+        
+            return transformedPos;
+        }
+
+        geometry_msgs::Point calculateRelativePosition(const geometry_msgs::Point& uav1Pos, const geometry_msgs::Point& uav2Pos) {
+            geometry_msgs::Point relativePos;
+            relativePos.x = uav2Pos.x - uav1Pos.x;
+            relativePos.y = uav2Pos.y - uav1Pos.y;
+            relativePos.z = uav2Pos.z - uav1Pos.z;
+            return relativePos;
+        }
+
+
         void MainOdom(const nav_msgs::Odometry &msg)
         {
             focal_heading = mrs_lib::AttitudeConverter(msg.pose.pose.orientation).getHeading();
@@ -1333,7 +1414,7 @@ namespace vertical_estimator
             //     az_linear = 0.0;
             // }
 
-            if(acc_outlier.back() - az_linear > 1.2 || acc_outlier.back() - az_linear < -1.20){
+            if(acc_outlier.back() - az_linear > 2.0 || acc_outlier.back() - az_linear < -2.0){
                 ROS_WARN("REPLACING acc %f with acc %f", az_linear, acc_outlier.back());
                 az_linear = acc_outlier.back();
             }
@@ -1346,7 +1427,7 @@ namespace vertical_estimator
             velocity_imu_focal.y = velocity_imu_focal.y + ay * dt;
             last_imu_update = ros::Time::now();
             
-            if(vel_outlier.back() - velocity_imu_focal.z > 0.450 || vel_outlier.back() - velocity_imu_focal.z < -0.450){
+            if(vel_outlier.back() - velocity_imu_focal.z > 1.0 || vel_outlier.back() - velocity_imu_focal.z < -1.0){
                 ROS_WARN("!!!!Replacing vel %f with %f!!!!",velocity_imu_focal.z, vel_outlier.back());
                 velocity_imu_focal.z = vel_outlier.back();
             }
@@ -1490,22 +1571,83 @@ namespace vertical_estimator
 
         double Quat2Eul(const geometry_msgs::Quaternion quat){
 
-            tf::Quaternion quater;
-            tf::quaternionMsgToTF(quat, quater);
-
             auto q = mrs_lib::AttitudeConverter(quat);
+            
+            geometry_msgs::Point pitch_test;
+            pitch_test.x = q.getPitch();
+
+            pub_pitch.publish(pitch_test);
 
             return q.getPitch();
 
         }
 
-        void ThrustCorrection(const mrs_msgs::AttitudeCommand thrustnmass) {
-            mrs_msgs::AttitudeCommand tmass_local = thrustnmass;
+        void MassEstimate(const std_msgs::Float64 mass){
+            mass_estimate = mass;
+        }
 
-            std::string output_frame = estimation_frame;
+        void ThrustCorrection(const mrs_msgs::Float64Stamped thrust) {
+            ROS_WARN("In thrust correction");
+            double thrust_force = thrust.value;
 
-            att_quat = tmass_local.attitude;
+            double thrust_acc = thrust.value/mass_estimate.data;
+            
+            double thrust_acc_corrected = thrust_acc - 9.8066;
 
+            geometry_msgs::Point th_debug;
+            th_debug.z = thrust_acc_corrected;
+            th_debug.y = thrust_acc;
+
+            pub_thrust_debug.publish(th_debug);
+
+            try {
+                        neighbor_filter->H << 0, 0, 0, 0, 0, 0, 1,
+                                            0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0;
+                        nbR_t R;
+                        R = Eigen::MatrixXd::Identity(3,3) * 1;
+                        Eigen::VectorXd z(3);
+                        z(0) = thrust_acc_corrected;
+
+                        neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
+                        if(neighbor_filter_statefocal.x(4) < 0){
+                            ROS_ERROR("Filter error on line 1606");
+                        }
+                        
+                        last_meas_focal = ros::Time::now();
+            }
+            catch([[maybe_unused]] std::exception e){
+                ROS_ERROR("LKF failed: %s", e.what());
+            }
+            // std::string cmd_output_frame = estimation_frame;
+
+            // gt2lf_ = transformer_->getTransform(cmd_odom_local.header.frame_id, cmd_output_frame, ros::Time(0));
+            // if (!gt2lf_)
+            // {
+            //     ROS_ERROR("[CmdOdom]: Could not obtain transform from %s to %s", cmd_odom_local.header.frame_id.c_str(),
+            //               cmd_output_frame.c_str());
+            //     return;
+            // }
+
+            // auto res_gt_ = transformer_->transform(cmd_odom_local, gt2lf_.value());
+            // if(res_gt_){
+            //     odom_orientation = res_gt_.value().pose.pose.orientation;
+            // }
+            // else {
+            //      ROS_INFO_STREAM("[CmdOdom]: Failed to get transformation for gt2lf measurement, returning.");
+            //         /* return; */
+            // }
+
+          
+
+
+
+            // mrs_msgs::AttitudeCommand tmass_local = thrustnmass;
+
+            // std::string output_frame = estimation_frame;
+
+            // att_quat = tmass_local.attitude;
+        
             // th_frame = transformer_->getTransform(tmass_local.header.frame_id, output_frame, ros::Time(0));
             
             // tf2lf_ = transformer_->getTransform(msg_local.header.frame_id, output_frame, ros::Time(0));
@@ -1559,6 +1701,31 @@ namespace vertical_estimator
                 
         }
 
+        void GroundTruth(nav_msgs::Odometry groundtruth_msg){
+
+            return;
+            // nav_msgs::Odometry groundtruth_msglocal = groundtruth_msg;
+            
+            // std::string output_frame = estimation_frame;
+
+            // gt2lf_ = transformer_->getTransform(groundtruth_msglocal.header.frame_id, output_frame, ros::Time(0));
+            // if (!gt2lf_)
+            // {
+            //     ROS_ERROR("[GroundTruth]: Could not obtain transform from %s to %s", groundtruth_msglocal.header.frame_id.c_str(),
+            //               output_frame.c_str());
+            //     return;
+            // }
+
+            // auto res_gt_ = transformer_->transform(groundtruth_msglocal, gt2lf_.value());
+            // if(res_gt_){
+            //     pub_ground_truth.publish(res_gt_.value());
+            // }
+            // else {
+            //      ROS_INFO_STREAM("[GroundTruth]: Failed to get transformation for gt2lf measurement, returning.");
+            //         /* return; */
+            // }
+        }
+
     private:
         /* Global variables //{ */
         /* ROS variables, topics and global bools //{ */
@@ -1584,6 +1751,8 @@ namespace vertical_estimator
 
         ros::Publisher pub_vert_estimator_output;
 
+        ros::Publisher pub_ground_truth;
+
         ros::Subscriber sub_main_odom;
         ros::Subscriber sub_state_odom;
         ros::Subscriber sub_imu_odom;
@@ -1591,6 +1760,7 @@ namespace vertical_estimator
 
         ros::Subscriber sub_garmin_range;
         ros::Subscriber sub_attitude_cmd;
+        ros::Subscriber sub_ground_truth;
 
         std::string odom_main_topic;
         std::string odom_state_topic;
@@ -1611,6 +1781,8 @@ namespace vertical_estimator
         std::shared_ptr<mrs_lib::Transformer> transformer_;
         std::optional<geometry_msgs::TransformStamped> tf2bf_;
         std::optional<geometry_msgs::TransformStamped> tf2lf_;
+
+        std::optional<geometry_msgs::TransformStamped> gt2lf_;
 
         std::optional<geometry_msgs::TransformStamped> th_frame;
         //}
@@ -1747,7 +1919,7 @@ namespace vertical_estimator
         std::vector<double> vel_outlier;
         std::vector<double> acc_outlier;
 
-        std::string attitude_cmd_topic;
+        std::string cmd_odom_topic;
 
         ros::Publisher pub_thrust_debug;
         
@@ -1761,6 +1933,24 @@ namespace vertical_estimator
         geometry_msgs::Quaternion att_quat;
 
         ros::Publisher pub_uvdar_debug;
+
+        ros::Publisher pub_pitch;
+
+        geometry_msgs::Quaternion odom_orientation;
+
+        std::string ground_truth_topic;
+
+        std::string body_frame;
+
+        std_msgs::Float64 mass_estimate;
+
+        std::string mass_estimate_topic;
+        std::string thrust_force_topic;
+
+        ros::Subscriber sub_mass_estimate;
+        ros::Subscriber sub_thrust_force;
+
+        
         // Eigen::MatrixXd output(3,3);
         //}
         //}
