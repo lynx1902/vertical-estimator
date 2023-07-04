@@ -22,8 +22,7 @@
 #include <sensor_msgs/Range.h>
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/Point.h>
-// #include <tf/tf.h>
-// #include <tf/transform_datatypes.h>
+
 #include <geometry_msgs/Vector3.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <mrs_msgs/AttitudeCommand.h>
@@ -42,10 +41,7 @@
 
 namespace mrs_lib
 {
-    // const int n_states = 3;
-    // const int n_inputs = 1;
-    // const int n_measurements = 1;
-    // using lkf_t = LKF<n_states, n_inputs, n_measurements>;
+    
     const int n_states = 7;
     const int n_inputs = 1;
     const int n_measurements = 3;
@@ -53,19 +49,6 @@ namespace mrs_lib
     using nblkf_t = LKF<n_states, n_inputs, n_measurements>;
 } // namespace mrs_lib
 
-// using A_t = mrs_lib::lkf_t::A_t;
-// using B_t = mrs_lib::lkf_t::B_t;
-// using H_t = mrs_lib::lkf_t::H_t;
-// using Q_t = mrs_lib::lkf_t::Q_t;
-// using u_t = mrs_lib::lkf_t::u_t;
-
-// using x_t = mrs_lib::lkf_t::x_t;
-// using P_t = mrs_lib::lkf_t::P_t;
-// using R_t = mrs_lib::lkf_t::R_t;
-
-// using statecov_t = mrs_lib::lkf_t::statecov_t;
-
-// using nblkf_t = mrs_lib::LKF<7,1,3>;
 
 using nbA_t = mrs_lib::nblkf_t::A_t;
 using nbB_t = mrs_lib::nblkf_t::B_t;
@@ -103,14 +86,12 @@ namespace vertical_estimator
             param_loader.loadParam("odom_main_topic", odom_main_topic);
             param_loader.loadParam("odom_state_topic", odom_state_topic);
             param_loader.loadParam("odom_imu_topic", odom_imu_topic);
-            param_loader.loadParam("measured_poses_topics", measured_poses_topics, measured_poses_topics);
-
-            param_loader.loadParam("filtered_poses_topics",filtered_poses_topics);            
+            param_loader.loadParam("measured_poses_topics", measured_poses_topics, measured_poses_topics);           
 
             param_loader.loadParam("range_topic", range_topic);
             param_loader.loadParam("range2_publish_topic", range2_publish_topic);
-            param_loader.loadParam("cmd_odom_topic", cmd_odom_topic);
-            param_loader.loadParam("ground_truth_topic", ground_truth_topic);
+            
+            
             param_loader.loadParam("mass_estimate_topic", mass_estimate_topic);
             param_loader.loadParam("thrust_force_topic",thrust_force_topic);
 
@@ -146,12 +127,11 @@ namespace vertical_estimator
 
             pub_pitch = nh_.advertise<geometry_msgs::Point>("pitch_angle",1);
 
-            pub_ground_truth = nh_.advertise<nav_msgs::Odometry>("ground_truth",1);
+            pub_quat = nh_.advertise<geometry_msgs::Quaternion>("quat_orientation",1);
 
             // Subscribers
             sub_garmin_range = nh_.subscribe(range_topic, 1, &VerticalEstimator::GarminRange, this);
-            sub_attitude_cmd = nh_.subscribe(cmd_odom_topic, 1, &VerticalEstimator::ThrustCorrection, this);
-            sub_ground_truth = nh_.subscribe(ground_truth_topic, 1, &VerticalEstimator::GroundTruth, this);
+            
             sub_mass_estimate = nh_.subscribe(mass_estimate_topic, 1, &VerticalEstimator::MassEstimate, this);
             sub_thrust_force = nh_.subscribe(thrust_force_topic,1, &VerticalEstimator::ThrustCorrection, this);
 
@@ -274,7 +254,6 @@ namespace vertical_estimator
 
                 sub_uvdar_measurements.push_back(nh_.subscribe(topic, 3, &VerticalEstimator::callbackUvdarMeasurement, this,
                                                                ros::TransportHints().tcpNoDelay()));
-                //  sub_uvdar_measurements.push_back(nh_.subscribe(filtered_poses_topics,1,&VerticalEstimator::callbackUvdarMeasurement, this, ros::TransportHints().tcpNoDelay()));
             }
             //}
 
@@ -301,14 +280,6 @@ namespace vertical_estimator
                 0,
                 0;
 
-        //   nbH << 1, 0, 0, 0, 0, 0, 0,
-        //         0, 1, 0, 0, 0, 0, 0,
-        //         0, 0, 1, 0, 0, 0, 0,
-        //         0, 0, 0, 1, 0, 0, 0,
-        //         0, 0, 0, 0, 1, 0, 0,
-        //         0, 0, 0, 0, 0, 1, 0,
-        //         0, 0, 0, 0, 0, 0, 1;
-                
             nbH << 1, 0, 0, 0, 0, 0, 0,
                 0, 1, 0, 0, 0, 0, 0,
                 0, 0, 1, 0, 0, 0, 0;
@@ -419,15 +390,7 @@ namespace vertical_estimator
                 vert_est_output.field_of_view = M_PI;
 
                 vert_est_output.range = neighbor_filter_statefocal.x(4);
-                pub_vert_estimator_output.publish(vert_est_output);
-
-                // nav_msgs::Odometry vert_est_output;
-                // vert_est_output.header.stamp = ros::Time::now();
-                // vert_est_output.header.frame_id = estimation_frame;
-                // vert_est_output.pose.pose.position.z = filter_state_focal.x(0);
-                // vert_est_output.twist.twist.linear.z = filter_state_focal.x(1);
-
-                // pub_vert_estimator_output.publish(vert_est_output); 
+                pub_vert_estimator_output.publish(vert_est_output); 
 
                 geometry_msgs::Point velo;
                 velo.x = neighbor_filter_statefocal.x(1) * cos(-focal_heading) - neighbor_filter_statefocal.x(3) * sin(-focal_heading);
@@ -443,11 +406,11 @@ namespace vertical_estimator
                 sphere.header.frame_id = output_frame;
                 sphere.header.stamp = ros::Time::now();
                 sphere.id = 1; 
-                sphere.type = visualization_msgs::Marker::SPHERE;
+                sphere.type = visualization_msgs::Marker::CUBE;
                 sphere.action = 0;
                 sphere.pose.position.x = neighbor_filter_statefocal.x(0);
-                sphere.pose.position.y = neighbor_filter_statefocal.x(1);
-                sphere.pose.position.z = neighbor_filter_statefocal.x(2);
+                sphere.pose.position.y = neighbor_filter_statefocal.x(2);
+                sphere.pose.position.z = neighbor_filter_statefocal.x(4);
                 sphere.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
                 sphere.scale.x = 0.3;
                 sphere.scale.y = 0.3;
@@ -459,8 +422,7 @@ namespace vertical_estimator
                 
                 pub_debug_position.publish(sphere);
                 
-                ROS_INFO_THROTTLE(0.25, "H: %f, H_dt: %f, H_ddt: %f", neighbor_filter_statefocal.x(4), neighbor_filter_statefocal.x(5), neighbor_filter_statefocal
-                .x(6));
+                ROS_INFO_THROTTLE(0.25, "H: %f, H_dt: %f, H_ddt: %f", neighbor_filter_statefocal.x(4), neighbor_filter_statefocal.x(5), neighbor_filter_statefocal.x(6));
             }
         }
         //}
@@ -522,38 +484,6 @@ namespace vertical_estimator
         }
         /* Filter matrices update //{ */
 
-        // A_t A_dt(double dt)
-        // {
-
-        //     A << 1, dt, dt * dt / 2,
-        //         0, 1, dt,
-        //         0, 0, 1;
-        //     return A;
-        // }
-
-        // H_t H_n(int type)
-        // {
-        //     if (type == 0)
-        //     {
-
-        //         H << 1, 0, 0;
-        //     }
-        //     else if (type == 1)
-        //     {
-
-        //         H << 0, 1, 0;
-        //     }
-        //     else if (type == 2)
-        //     {
-        //         H << 0, 0, 1;
-        //     }
-        //     else
-        //     {
-        //         ROS_WARN_THROTTLE(1.0, "Wrong measurement matrix type");
-        //     }
-        //     return H;
-        // }
-
         nbA_t nbA_dt(double dt)
         {
             nbA << 1, dt, 0, 0, 0, 0, 0, 
@@ -575,21 +505,6 @@ namespace vertical_estimator
         //}
 
         /* Covariance to eigen method //{ */
-
-        Eigen::MatrixXd rosCovarianceToEigen(const boost::array<double, 9> input) /*for 3x3 matrices*/
-        {
-            Eigen::MatrixXd output(3, 3);
-
-            for (int i = 0; i < 3; i++)
-            {
-                for (int j = 0; j < 3; j++)
-                {
-                    output(j, i) = input[3 * j + i];
-                }
-            }
-
-            return output;
-        }
 
         Eigen::MatrixXd rosCovarianceToEigen2(const boost::array<double, 36> input) /*for 6x6 matrices*/
         {
@@ -622,12 +537,11 @@ namespace vertical_estimator
                 return;
             }
 
-            // u_t u = u_t::Zero();
+            
 
             nbu_t nbu = nbu_t::Zero();
 
             double new_dt = std::fmax(std::fmin(std::fmin((ros::Time::now()-agents[nb_index].last_updt).toSec(), (ros::Time::now()-agents[nb_index].last_meas_u).toSec()), (ros::Time::now()-agents[nb_index].last_meas_s).toSec()),0.0);
-            // filter->A = A_dt(new_dt);
 
             // New updated filter
             neighbor_filter->A = nbA_dt(new_dt);
@@ -741,6 +655,7 @@ namespace vertical_estimator
                 auto res_l_ = transformer_->transform(meas_s, tf2lf_.value());
                 auto res_b_ = transformer_->transform(meas_s, tf2bf_.value());
 
+
                 if (res_b_)
                 {
                     Eigen::MatrixXd poseCovB(6, 6);
@@ -764,7 +679,13 @@ namespace vertical_estimator
                         agents[aid].pfcu_init = true;
                         agents[aid].angle_z = atan2(agents[aid].pfcu.y,agents[aid].pfcu.x);
                         // agents[aid].quat = res_b_.value().pose.pose.orientation;
-                        agents[aid].quat = res_l_.value().pose.pose.orientation;
+                        tf2::Quaternion q_temp;
+                        tf2::fromMsg(res_l_.value().pose.pose.orientation, q_temp);
+                        q_temp = q_temp.normalized();
+                        geometry_msgs::Quaternion normalizedQuaternion;
+                        normalizedQuaternion = tf2::toMsg(q_temp);
+                        agents[aid].quat = normalizedQuaternion;
+                        // agents[aid].quat = res_l_.value().pose.pose.orientation;
                        
                         
 
@@ -813,17 +734,19 @@ namespace vertical_estimator
                                     geometry_msgs::Point B;
                                     B.x = A.x + cos(nb_hdg + focal_heading);
                                     B.y = A.y + sin(nb_hdg + focal_heading);
-                                    B.z = A.z + 0.1*sin(Quat2Eul(nb.quat)*(M_PI/180));
+                                    B.z = A.z + 0.1*sin(Quat2Eul(nb.quat));
+                                    // B.z = A.z + 0.1*sin(Quat2Eul(nb.quat)*(M_PI/180));
                                     
                                     geometry_msgs::Point C;
                                     C.x = agents[aid].nb_filter_state.x(0);
                                     C.y = agents[aid].nb_filter_state.x(2);
                                     C.z = agents[aid].nb_filter_state.x(4); /*need to calculate actual value*/
+                                    
                                     geometry_msgs::Point D;
-
                                     D.x = C.x + cos(agents[aid].angle_z + focal_heading);
                                     D.y = C.y + sin(agents[aid].angle_z + focal_heading);
-                                    D.z = C.z + 0.1*sin(Quat2Eul(agents[aid].quat)*(M_PI/180));
+                                    D.z = C.z + 0.1*sin(Quat2Eul(agents[aid].quat));
+                                    // D.z = C.z + 0.1*sin(Quat2Eul(agents[aid].quat)*(M_PI/180));
 
                                     Eigen::Vector3d dirAB, dirCD;
                                     dirAB(0) = B.x - A.x;
@@ -879,7 +802,7 @@ namespace vertical_estimator
                                             double dist_z = abs(distanceComponents(2));
                                             
                                             if(minDistance == dist_z){
-                                                ROS_WARN("Values are same!No issue here");
+                                                ROS_WARN("Values are same!Some issue here");
                                             }
 
                                             if(dist_z > 0.0){
@@ -890,10 +813,9 @@ namespace vertical_estimator
                                               new_int.z = (intersectionAB.z + intersectionCD.z)/2.0;
                                                 if(new_int.z < 0){
                                                     ROS_ERROR("Line 714 calc");
-                                                    new_int.z = (A.z + C.z)/2.0;
+                                                    new_int.z = (B.z + D.z)/2.0;
                                                     if(new_int.z < 0.0){
                                                         ROS_ERROR("Still negative at 714");
-                                                        new_int.z = (A.z + C.z)/2.0;
                                                     }
                                                 }
                                             }
@@ -903,7 +825,7 @@ namespace vertical_estimator
                                                 new_int.z = (intersectionAB.z + intersectionCD.z)/2.0;
                                                 if(new_int.z < 00){
                                                     ROS_ERROR("Line 720 calc");
-                                                    new_int.z = (A.z + C.z)/2.0;
+                                                    new_int.z = (B.z + D.z)/2.0;
                                                     if(new_int.z < 0.0){
                                                         ROS_ERROR("Terrible error!!!");
                                                         
@@ -918,7 +840,7 @@ namespace vertical_estimator
                                                     double calc_z = intersectionAB.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0.0){
-                                                        new_int.z = (A.z + C.z)/2.0;
+                                                        new_int.z = (B.z + D.z)/2.0;
                                                     } else {
                                                         new_int.z = calc_z;
                                                     }
@@ -932,7 +854,7 @@ namespace vertical_estimator
                                                     double calc_z = intersectionCD.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0){
-                                                        new_int.z = (A.z + C.z)/2.0;
+                                                        new_int.z = (B.z + D.z)/2.0;
                                                     } else {
                                                         new_int.z = calc_z;
                                                     }
@@ -962,7 +884,7 @@ namespace vertical_estimator
                                                 new_int.x = A.x + (h/k) * dirAB(0);
                                                 new_int.y = A.y + (h/k) * dirAB(1);
                                                 new_int.z =  A.z + (h/k) * dirAB(2);
-                                                if(new_int.z < 00){
+                                                if(new_int.z < 0.0){
                                                     ROS_ERROR("Line 755 calc");
                                                     new_int.z = (A.z + C.z)/2.0;
                                                 }
@@ -970,7 +892,7 @@ namespace vertical_estimator
                                                 new_int.x = A.x - (h/k) * dirAB(0);
                                                 new_int.y = A.y - (h/k) * dirAB(1);
                                                 new_int.z = A.z - (h/k) * dirAB(2);
-                                                if(new_int.z < 00){
+                                                if(new_int.z < 0.0){
                                                     ROS_ERROR("Line 760 calc");
                                                     new_int.z = (A.z + C.z)/2.0;
                                                 }
@@ -994,9 +916,9 @@ namespace vertical_estimator
                                         
                                         
                                         
-                                        new_int.x = (A.x)/2.0 + (dist_x/2.0);
-                                        new_int.y = (A.y)/2.0 + (dist_y/2.0);
-                                        new_int.z = (A.z)/2.0 + (dist_z/2.0);
+                                        new_int.x = (A.x) + (dist_x/2.0);
+                                        new_int.y = (A.y) + (dist_y/2.0);
+                                        new_int.z = (A.z) + (dist_z/2.0);
                                     
                                     } 
                                 
@@ -1036,10 +958,8 @@ namespace vertical_estimator
                                     uvdar_pos_debug.z = new_int.z;
                                     pub_uvdar_pos_debug.publish(uvdar_pos_debug);
 
-                                    // double gt_dist = sqrt(pow(focal_position.x - new_int.x, 2) + pow(focal_position.y - new_int.y, 2) +
-                                                        //   pow(focal_position.z - new_int.z, 2));
                                     double gt_dist = sqrt(pow(focal_position.z - new_int.z,2));
-                                    // if (abs(det) > 0.0001 && gt_dist < 5.0)
+
                                     if(gt_dist < 5.0)
                                     {
                                         ROS_INFO(
@@ -1192,8 +1112,8 @@ namespace vertical_estimator
                         Eigen::MatrixXd poseCov(7, 7);
                         poseCov << Eigen::MatrixXd::Identity(7, 7);
 
-                        ROS_INFO("LKF initialized for UAV%d with UVDAR reloc at %f, %f of gps frame.", agents[aid].name_id,
-                                 poseVec(4), poseVec(5));
+                        ROS_INFO("LKF initialized for UAV%d with UVDAR reloc at %f, %f, %f of gps frame.", agents[aid].name_id,
+                                 poseVec(4), poseVec(5), poseVec(6));
 
                         agents[aid].last_meas_u = ros::Time::now();
                         agents[aid].last_meas_s = ros::Time::now();
@@ -1206,6 +1126,7 @@ namespace vertical_estimator
                     {
                         if (eigvals(0).real() < 500 && eigvals(1).real() < 500 && eigvals(2).real() < 500 &&
                             (ros::Time::now() - agents[aid].last_meas_u).toSec() >= 4.0)
+                        // if(eigvals(2).real() < 500 && (ros::Time::now() - agents[aid].last_meas_u).toSec() >= 4.0)
                         {
                             
                             try
@@ -1414,7 +1335,7 @@ namespace vertical_estimator
             //     az_linear = 0.0;
             // }
 
-            if(acc_outlier.back() - az_linear > 2.0 || acc_outlier.back() - az_linear < -2.0){
+            if(acc_outlier.back() - az_linear > 3.0 || acc_outlier.back() - az_linear < -3.0){
                 ROS_WARN("REPLACING acc %f with acc %f", az_linear, acc_outlier.back());
                 az_linear = acc_outlier.back();
             }
@@ -1427,7 +1348,7 @@ namespace vertical_estimator
             velocity_imu_focal.y = velocity_imu_focal.y + ay * dt;
             last_imu_update = ros::Time::now();
             
-            if(vel_outlier.back() - velocity_imu_focal.z > 1.0 || vel_outlier.back() - velocity_imu_focal.z < -1.0){
+            if(vel_outlier.back() - velocity_imu_focal.z > 2.0 || vel_outlier.back() - velocity_imu_focal.z < -2.0){
                 ROS_WARN("!!!!Replacing vel %f with %f!!!!",velocity_imu_focal.z, vel_outlier.back());
                 velocity_imu_focal.z = vel_outlier.back();
             }
@@ -1543,9 +1464,8 @@ namespace vertical_estimator
                     rmsg.range = (*itr).range;
                 }
             }
-            // return;
 
-
+            //Garmin frame is uav29/garmin. Have to transform to uav29/gps_origin before making filter correction.
             // try 
             // {
             //     neighbor_filter->H << 0, 0, 0, 0, 1, 0, 0,
@@ -1570,13 +1490,15 @@ namespace vertical_estimator
         //}
 
         double Quat2Eul(const geometry_msgs::Quaternion quat){
-
+            
             auto q = mrs_lib::AttitudeConverter(quat);
             
             geometry_msgs::Point pitch_test;
-            pitch_test.x = q.getPitch();
-
-            pub_pitch.publish(pitch_test);
+            pitch_test.x = q.getPitch()*(180/M_PI);
+            
+            // if(pitch_flag){
+                pub_pitch.publish(pitch_test);
+            // }            
 
             return q.getPitch();
 
@@ -1587,12 +1509,15 @@ namespace vertical_estimator
         }
 
         void ThrustCorrection(const mrs_msgs::Float64Stamped thrust) {
-            ROS_WARN("In thrust correction");
+            
             double thrust_force = thrust.value;
 
             double thrust_acc = thrust.value/mass_estimate.data;
             
             double thrust_acc_corrected = thrust_acc - 9.8066;
+            if(thrust_acc_corrected < -1.0){
+               return;
+            }
 
             geometry_msgs::Point th_debug;
             th_debug.z = thrust_acc_corrected;
@@ -1619,112 +1544,9 @@ namespace vertical_estimator
             catch([[maybe_unused]] std::exception e){
                 ROS_ERROR("LKF failed: %s", e.what());
             }
-            // std::string cmd_output_frame = estimation_frame;
-
-            // gt2lf_ = transformer_->getTransform(cmd_odom_local.header.frame_id, cmd_output_frame, ros::Time(0));
-            // if (!gt2lf_)
-            // {
-            //     ROS_ERROR("[CmdOdom]: Could not obtain transform from %s to %s", cmd_odom_local.header.frame_id.c_str(),
-            //               cmd_output_frame.c_str());
-            //     return;
-            // }
-
-            // auto res_gt_ = transformer_->transform(cmd_odom_local, gt2lf_.value());
-            // if(res_gt_){
-            //     odom_orientation = res_gt_.value().pose.pose.orientation;
-            // }
-            // else {
-            //      ROS_INFO_STREAM("[CmdOdom]: Failed to get transformation for gt2lf measurement, returning.");
-            //         /* return; */
-            // }
-
-          
-
-
-
-            // mrs_msgs::AttitudeCommand tmass_local = thrustnmass;
-
-            // std::string output_frame = estimation_frame;
-
-            // att_quat = tmass_local.attitude;
-        
-            // th_frame = transformer_->getTransform(tmass_local.header.frame_id, output_frame, ros::Time(0));
-            
-            // tf2lf_ = transformer_->getTransform(msg_local.header.frame_id, output_frame, ros::Time(0));
-            // if (!th_frame)
-            // {
-            //     ROS_ERROR("[ControlManager]: Could not obtain transform from %s to %s", tmass_local.header.frame_id.c_str(),
-            //               output_frame.c_str());
-            //     return;
-            // }
-            //     tmass.mass = tmass_local.total_mass;
-            //     tmass.thrust = tmass_local.thrust;
-                
-            //     auto res_th = transformer_->transform(tmass, th_frame.value());
-
-                // if(res_th){
-                //     double acc_z = res_th.value().thrust/res_th.value().mass;
-                
-                //     try 
-                //     {
-                //         neighbor_filter->H << 0, 0, 0, 0, 0, 0, 1,
-                //                             0, 0, 0, 0, 0, 0, 0,
-                //                             0, 0, 0, 0, 0, 0, 0;
-                //         nbR_t R;
-                //         R = Eigen::MatrixXd::Identity(3,3) * 1;
-                //         Eigen::VectorXd z(3);
-                //         z(0) = acc_z;
-
-                //         neighbor_filter_statefocal = neighbor_filter->correct(neighbor_filter_statefocal, z, R);
-                //         if(neighbor_filter_statefocal.x(4) < 0){
-                //             ROS_ERROR("Filter error on line 1784");
-                //         }
-                        
-                //         last_meas_focal = ros::Time::now();
-                //     }
-                //     catch([[maybe_unused]] std::exception e) {
-                //         ROS_ERROR("LKF failed: %s", e.what());
-                //     }
-
-                //     geometry_msgs::Point thrust_acc;
-                //     thrust_acc.x = thrustnmass.desired_acceleration.z;
-                //     thrust_acc.z = acc_z;
-                    
-
-                //     pub_thrust_debug.publish(thrust_acc);
-                // }
-                // else
-                // {
-                //     ROS_INFO_STREAM("[ControlManager]: Failed to get transformation for th_frame measurement, returning.");
-                //     /* return; */
-                // }
-                
         }
 
-        void GroundTruth(nav_msgs::Odometry groundtruth_msg){
-
-            return;
-            // nav_msgs::Odometry groundtruth_msglocal = groundtruth_msg;
-            
-            // std::string output_frame = estimation_frame;
-
-            // gt2lf_ = transformer_->getTransform(groundtruth_msglocal.header.frame_id, output_frame, ros::Time(0));
-            // if (!gt2lf_)
-            // {
-            //     ROS_ERROR("[GroundTruth]: Could not obtain transform from %s to %s", groundtruth_msglocal.header.frame_id.c_str(),
-            //               output_frame.c_str());
-            //     return;
-            // }
-
-            // auto res_gt_ = transformer_->transform(groundtruth_msglocal, gt2lf_.value());
-            // if(res_gt_){
-            //     pub_ground_truth.publish(res_gt_.value());
-            // }
-            // else {
-            //      ROS_INFO_STREAM("[GroundTruth]: Failed to get transformation for gt2lf measurement, returning.");
-            //         /* return; */
-            // }
-        }
+      
 
     private:
         /* Global variables //{ */
@@ -1950,6 +1772,8 @@ namespace vertical_estimator
         ros::Subscriber sub_mass_estimate;
         ros::Subscriber sub_thrust_force;
 
+        ros::Publisher pub_quat;
+        bool pitch_flag;
         
         // Eigen::MatrixXd output(3,3);
         //}

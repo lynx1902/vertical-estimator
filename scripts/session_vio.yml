@@ -27,7 +27,7 @@ windows:
         - waitForSimulation; sleep 1; rosservice call /mrs_drone_spawner/spawn "29 $UAV_TYPE --pos -25 10.0 0.5 1.57 --enable-ground-truth  --enable-rangefinder --enable-dual-uv-cameras --uvcam_calib_file \"$(rospack find uvdar_core)/include/OCamCalib/config/calib_results_bf_uv_fe.txt\" --enable-uv-leds --uvled_s_l 2 --uvled_s_r 2"
         - waitForSimulation; sleep 1; rosservice call /mrs_drone_spawner/spawn "30 $UAV_TYPE --pos -31 15 0.5 0.0 --enable-ground-truth  --enable-rangefinder --enable-dual-uv-cameras --uvcam_calib_file \"$(rospack find uvdar_core)/include/OCamCalib/config/calib_results_bf_uv_fe.txt\" --enable-uv-leds --uvled_s_l 3 --uvled_s_r 3"
         - waitForSimulation; sleep 1; rosservice call /mrs_drone_spawner/spawn "38 $UAV_TYPE --pos -19 15 0.5 3.14 --enable-ground-truth --enable-rangefinder --enable-dual-uv-cameras --uvcam_calib_file \"$(rospack find uvdar_core)/include/OCamCalib/config/calib_results_bf_uv_fe.txt\" --enable-uv-leds --uvled_s_l 0 --uvled_s_r 0"
-        - waitForSimulation; sleep 1; rosservice call /mrs_drone_spawner/spawn "39 $UAV_TYPE --pos -25 20 0.5 0.0 --enable-ground-truth  --enable-rangefinder --enable-dual-uv-cameras --uvcam_calib_file \"$(rospack find uvdar_core)/include/OCamCalib/config/calib_results_bf_uv_fe.txt\" --enable-uv-leds --uvled_s_l 1 --uvled_s_r 1"
+        - waitForSimulation; sleep 1; rosservice call /mrs_drone_spawner/spawn "39 $UAV_TYPE --pos -25 20 0.5 -1.57 --enable-ground-truth  --enable-rangefinder --enable-dual-uv-cameras --uvcam_calib_file \"$(rospack find uvdar_core)/include/OCamCalib/config/calib_results_bf_uv_fe.txt\" --enable-uv-leds --uvled_s_l 1 --uvled_s_r 1"
         
         # - waitForSimulation; sleep 1; rosservice call /mrs_drone_spawner/spawn "7 $UAV_TYPE --pos 0.0 0.0 0.5 1.6 --enable-ground-truth --enable-rangefinder"
   - control:
@@ -149,10 +149,10 @@ windows:
       layout: even-vertical
       panes:
         -  'export UAV_NAME=uav29; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-25, 10.0, 3.5, 1.57\]\"'
-        -  'export UAV_NAME=uav30; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-31, 15.0, 3.7, 0.0\]\"'
-        -  'export UAV_NAME=uav38; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-19, 15.0, 4.0, 3.14\]\"'
+        -  'export UAV_NAME=uav30; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-31, 15.0, 3.5, 0.0\]\"'
+        -  'export UAV_NAME=uav38; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-19, 15.0, 3.5, 3.14\]\"'
         
-        -  'export UAV_NAME=uav39; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-25, 20.0, 2.3, 0.0\]\"'
+        -  'export UAV_NAME=uav39; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-25, 20.0, 3.5, -1.57\]\"'
   - waypoint-flier-uav29:
       layout: tiled
       panes:
@@ -172,8 +172,7 @@ windows:
         # - waitForOdometry; rosbag record -O uav_impdebug.bag /uav29/vertical_estimator/range_output /uav29/garmin/range /uav29/vertical_estimator/uvdar_pos_debug /uav29/odometry/odom_main /uav29/odometry/imu_untilted /uav29/vertical_estimator/velocity_output /uav29/vertical_estimator/uvdar_velocity /uav29/vertical_estimator/imu_velocity /uav29/odometry/ground_truth
         # - waitForOdometry; rosbag record -O uav29_uvdar_check.bag /uav29/vertical_estimator/velocity_uvdar_fcu /uav29/vertical_estimator/vert_estimator_output_fcu /uav29/vertical_estimator/uvdar_pos_check      
         # - waitForOdometry; rosbag record -O uav_alldebug.bag /uav29/vertical_estimator/range_output /uav29/odometry/odom_main /uav29/vertical_estimator/ /uav30/vertical_estimator/range_output /uav30/odometry/odom_main /uav38/vertical_estimator/range_output /uav38/odometry/odom_main /uav39/odometry/odom_main /uav39/vertical_estimator/range_output
-        - waitForOdometry; rosbag record -O jun27_debug.bag
-          /uav29/vertical_estimator/range_output 
+        - waitForOdometry; rosbag record -O july3odom_debug.bag 
           /uav29/vertical_estimator/uvdar_velocity 
           /uav29/vertical_estimator/imu_velocity 
           /uav29/vertical_estimator/uvdar_pos_debug 
@@ -182,44 +181,42 @@ windows:
           /uav29/vertical_estimator/thrust_debug
           /uav29/garmin/range2
           /uav29/ground_truth
-          /uav29/vertical_estimator/ground_truth
           /uav29/vertical_estimator/debug
           /uav29/odometry/odom_main
           /uav29/odometry/imu_untilted
-
-          /uav30/vertical_estimator/range_output 
+          /uav29/garmin/range
           /uav30/vertical_estimator/uvdar_velocity 
           /uav30/vertical_estimator/imu_velocity 
           /uav30/vertical_estimator/uvdar_pos_debug 
           /uav30/vertical_estimator/velocity_output 
           /uav30/vertical_estimator/imu_acc
           /uav30/vertical_estimator/thrust_debug
-          /uav30/odometry/odom_main 
-          /uav30/odometry/imu_untilted
-          /uav30/garmin/range2 
+          /uav30/garmin/range2
           /uav30/ground_truth
-          /uav38/vertical_estimator/range_output 
+          /uav30/vertical_estimator/debug
+          /uav30/odometry/odom_main
+          /uav30/odometry/imu_untilted
           /uav38/vertical_estimator/uvdar_velocity 
           /uav38/vertical_estimator/imu_velocity 
           /uav38/vertical_estimator/uvdar_pos_debug 
-          /uav38/vertical_estimator/velocity_output
+          /uav38/vertical_estimator/velocity_output 
           /uav38/vertical_estimator/imu_acc
           /uav38/vertical_estimator/thrust_debug
-          /uav38/odometry/odom_main 
-          /uav38/odometry/imu_untilted
           /uav38/garmin/range2
           /uav38/ground_truth
-          /uav38/garmin/range
-          /uav39/vertical_estimator/range_output 
+          /uav38/vertical_estimator/debug
+          /uav38/odometry/odom_main
+          /uav38/odometry/imu_untilted
           /uav39/vertical_estimator/uvdar_velocity 
           /uav39/vertical_estimator/imu_velocity 
           /uav39/vertical_estimator/uvdar_pos_debug 
-          /uav39/vertical_estimator/velocity_output
+          /uav39/vertical_estimator/velocity_output 
           /uav39/vertical_estimator/imu_acc
           /uav39/vertical_estimator/thrust_debug
-          /uav39/odometry/odom_main 
-          /uav39/odometry/imu_untilted  
           /uav39/garmin/range2
           /uav39/ground_truth
-          /uav39/garmin/range
+          /uav39/vertical_estimator/debug
+          /uav39/odometry/odom_main
+          /uav39/odometry/imu_untilted
+          
           

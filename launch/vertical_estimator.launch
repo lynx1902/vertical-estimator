@@ -33,13 +33,8 @@
 
       <param name="range2_publish_topic" value="/$(arg uav_name)/garmin/range2"/> 
 
-      <param name="cmd_odom_topic" value="/$(arg uav_name)/control_manager/cmd_odom" />
-
-      <param name="ground_truth_topic" value="/$(arg uav_name)/ground_truth"/>
       <param name = "mass_estimate_topic" value="/$(arg uav_name)/control_manager/mass_estimate"/>
-      <param name="thrust_force_topic" value="/$(arg uav_name)/control_manger/thrust_force"/>
-
-       <param     name="filtered_poses_topics" value="/$(arg uav_name)/uvdar/filteredPoses"/>
+      <param name="thrust_force_topic" value="/$(arg uav_name)/control_manager/thrust_force"/>
 
       <!-- <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R"] </rosparam> -->
       <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R"] </rosparam>
