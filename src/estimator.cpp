@@ -116,8 +116,8 @@ namespace vertical_estimator
             pub_velocity_imu = nh_.advertise<geometry_msgs::Point>("imu_velocity",1);
             pub_acc_imu = nh_.advertise<geometry_msgs::Point>("imu_acc",1);
             
-            // pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>("range_output", 1); /*vert estimator*/
-            pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>(range2_publish_topic, 1);
+            pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>("range_output", 1); /*vert estimator*/
+//            pub_vert_estimator_output = nh_.advertise<sensor_msgs::Range>(range2_publish_topic, 1);
 
             pub_velocity_uvdar_fcu = nh_.advertise<geometry_msgs::Point>("uvdar_velocity", 1);
             pub_vert_estimator_output_fcu = nh_.advertise<geometry_msgs::Point>("velocity_output",1);
@@ -384,7 +384,7 @@ namespace vertical_estimator
                 sensor_msgs::Range vert_est_output;
                 vert_est_output.header.stamp = ros::Time::now();
                 vert_est_output.header.frame_id = estimation_frame;
-                vert_est_output.radiation_type = vert_est_output.INFRARED;
+                vert_est_output.radiation_type = vert_est_output.ULTRASOUND;
                 vert_est_output.min_range = 0.0;
                 vert_est_output.max_range = 20.0;
                 vert_est_output.field_of_view = M_PI;
@@ -810,7 +810,8 @@ namespace vertical_estimator
                                             if(dirAB(2) < 0.0 && dirCD(2) < 0.0){
                                               new_int.x = (intersectionAB.x + intersectionCD.x)/2.0;
                                               new_int.y = (intersectionAB.y + intersectionCD.y)/2.0;
-                                              new_int.z = (intersectionAB.z + intersectionCD.z)/2.0;
+                                              new_int.z = (intersectionAB.z) - (dist_z/2.0);
+                                            //   new_int.z = (intersectionAB.z + intersectionCD.z)/2.0;
                                                 if(new_int.z < 0){
                                                     ROS_ERROR("Line 714 calc");
                                                     new_int.z = (B.z + D.z)/2.0;
@@ -822,7 +823,8 @@ namespace vertical_estimator
                                             else if(dirAB(2) > 0.0 && dirCD(2) > 0.0){
                                                 new_int.x = (intersectionAB.x + intersectionCD.x)/2.0;
                                                 new_int.y = (intersectionAB.y + intersectionCD.y)/2.0;
-                                                new_int.z = (intersectionAB.z + intersectionCD.z)/2.0;
+                                                new_int.z = intersectionAB.z + (dist_z/2.0);
+                                                // new_int.z = (intersectionAB.z + intersectionCD.z)/2.0;
                                                 if(new_int.z < 00){
                                                     ROS_ERROR("Line 720 calc");
                                                     new_int.z = (B.z + D.z)/2.0;
@@ -835,8 +837,8 @@ namespace vertical_estimator
                                             else {
                                                 ROS_WARN("Opposite Slopes");
                                                 if(intersectionAB.z < intersectionCD.z){
-                                                    new_int.x = (intersectionAB.x + intersectionCD.x) /2.0;
-                                                    new_int.y = (intersectionAB.y + intersectionCD.y) /2.0;
+                                                    new_int.x = (intersectionAB.x + intersectionCD.x)/2.0;
+                                                    new_int.y = (intersectionAB.y + intersectionCD.y)/2.0;
                                                     double calc_z = intersectionAB.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0.0){
@@ -849,8 +851,8 @@ namespace vertical_estimator
                                                     }
                                                 }
                                                 else if (intersectionCD.z < intersectionAB.z){
-                                                    new_int.x = (intersectionAB.x + intersectionCD.x) /2.0;
-                                                    new_int.y = (intersectionAB.y + intersectionCD.y) /2.0;
+                                                    new_int.x = (intersectionAB.x + intersectionCD.x)/2.0;
+                                                    new_int.y = (intersectionAB.y + intersectionCD.y)/2.0;
                                                     double calc_z = intersectionCD.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0){
@@ -858,7 +860,7 @@ namespace vertical_estimator
                                                     } else {
                                                         new_int.z = calc_z;
                                                     }
-                                                    if(new_int.z < 00){
+                                                    if(new_int.z < 00.0){
                                                     ROS_ERROR("Line 734 calc");
                                                 }
                                                 }
@@ -950,6 +952,9 @@ namespace vertical_estimator
                                     // new_int.x = nb1_pos.x + averageRelativePos.x;
                                     // new_int.y = nb1_pos.y + averageRelativePos.y;
                                     // new_int.z = nb1_pos.z + averageRelativePos.z;
+                                    // if(new_int.z < 0){
+                                    //     new_int.z = (nb1_pos.z + nb2_pos.z)/2.0;
+                                    // }
                                     /*End of method 2*/
 
                                     geometry_msgs::Point uvdar_pos_debug;

@@ -179,6 +179,7 @@ windows:
           /uav29/vertical_estimator/velocity_output 
           /uav29/vertical_estimator/imu_acc
           /uav29/vertical_estimator/thrust_debug
+          /uav29/vertical_estimator/range_output
           /uav29/garmin/range2
           /uav29/ground_truth
           /uav29/vertical_estimator/debug
@@ -191,32 +192,38 @@ windows:
           /uav30/vertical_estimator/velocity_output 
           /uav30/vertical_estimator/imu_acc
           /uav30/vertical_estimator/thrust_debug
+          /uav30/vertical_estimator/range_output
           /uav30/garmin/range2
           /uav30/ground_truth
           /uav30/vertical_estimator/debug
           /uav30/odometry/odom_main
           /uav30/odometry/imu_untilted
+          /uav30/garmin/range
           /uav38/vertical_estimator/uvdar_velocity 
           /uav38/vertical_estimator/imu_velocity 
           /uav38/vertical_estimator/uvdar_pos_debug 
           /uav38/vertical_estimator/velocity_output 
           /uav38/vertical_estimator/imu_acc
           /uav38/vertical_estimator/thrust_debug
+          /uav38/vertical_estimator/range_output
           /uav38/garmin/range2
           /uav38/ground_truth
           /uav38/vertical_estimator/debug
           /uav38/odometry/odom_main
           /uav38/odometry/imu_untilted
+          /uav38/garmin/range
           /uav39/vertical_estimator/uvdar_velocity 
           /uav39/vertical_estimator/imu_velocity 
           /uav39/vertical_estimator/uvdar_pos_debug 
           /uav39/vertical_estimator/velocity_output 
           /uav39/vertical_estimator/imu_acc
           /uav39/vertical_estimator/thrust_debug
+          /uav39/vertical_estimator/range_output
           /uav39/garmin/range2
           /uav39/ground_truth
           /uav39/vertical_estimator/debug
           /uav39/odometry/odom_main
           /uav39/odometry/imu_untilted
+          /uav39/garmin/range
           
           
