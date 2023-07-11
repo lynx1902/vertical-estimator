@@ -13,6 +13,7 @@
         "/opt/ros/noetic/lib/python3/dist-packages"
     ],
     "files.associations": {
-        "optional": "cpp"
+        "optional": "cpp",
+        "cmath": "cpp"
     }
 }

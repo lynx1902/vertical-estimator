@@ -2,6 +2,7 @@
 # Lateral state estimator:
 # OPTFLOW, GPS, OPTFLOWGPS, RTK, ICP, VIO, HECTOR
 # lateral_estimator: "OPTFLOW"
+
 lateral_estimator: "GPS"
 
 # Altitude state estimator:

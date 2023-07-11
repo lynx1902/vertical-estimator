@@ -33,10 +33,10 @@ windows:
   - control:
       layout: tiled
       panes:
-        - export UAV_NAME=uav29; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml
-        - export UAV_NAME=uav30; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml
-        - export UAV_NAME=uav38; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml
-        - export UAV_NAME=uav39; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml
+        - export UAV_NAME=uav29; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=./custom_configs/garmin.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml custom_range_topic:=garmin/range2
+        - export UAV_NAME=uav30; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=./custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml custom_range_topic:=garmin/range
+        - export UAV_NAME=uav38; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=./custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml custom_range_topic:=garmin/range
+        - export UAV_NAME=uav39; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=./custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml custom_range_topic:=garmin/range
         
         # - export UAV_NAME=uav7; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml
   - autostart:
@@ -83,9 +83,9 @@ windows:
       layout: tiled
       panes:
         - export UAV_NAME=uav29; waitForOdometry; roslaunch my_code vertical_estimator.launch
-        - export UAV_NAME=uav30; waitForOdometry; roslaunch my_code vertical_estimator.launch
-        - export UAV_NAME=uav38; waitForOdometry; roslaunch my_code vertical_estimator.launch
-        - export UAV_NAME=uav39; waitForOdometry; roslaunch my_code vertical_estimator.launch
+          #       - export UAV_NAME=uav30; waitForOdometry; roslaunch my_code vertical_estimator.launch
+          #        - export UAV_NAME=uav38; waitForOdometry; roslaunch my_code vertical_estimator.launch
+          #   - export UAV_NAME=uav39; waitForOdometry; roslaunch my_code vertical_estimator.launch
   
   
  
@@ -153,13 +153,13 @@ windows:
         -  'export UAV_NAME=uav38; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-19, 15.0, 3.5, 3.14\]\"'
         
         -  'export UAV_NAME=uav39; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-25, 20.0, 3.5, -1.57\]\"'
-  - waypoint-flier-uav29:
-      layout: tiled
-      panes:
-        - export UAV_NAME=uav29; waitForControl; roslaunch waypoint_flier waypoint_flier.launch
-        - history -s rosservice call /$UAV_NAME/waypoint_flier/fly_to_first_waypoint
-        - history -s rosservice call /$UAV_NAME/waypoint_flier/start_waypoints_following
-        - history -s rosservice call /$UAV_NAME/waypoint_flier/stop_waypoints_following
+  # - waypoint-flier-uav29:
+  #     layout: tiled
+  #     panes:
+  #       - export UAV_NAME=uav29; waitForControl; roslaunch waypoint_flier waypoint_flier.launch
+  #       - history -s rosservice call /$UAV_NAME/waypoint_flier/fly_to_first_waypoint
+  #       - history -s rosservice call /$UAV_NAME/waypoint_flier/start_waypoints_following
+  #       - history -s rosservice call /$UAV_NAME/waypoint_flier/stop_waypoints_following
 
   # - plotting:
   #     layout: tiled
