@@ -36,6 +36,8 @@
       <param name = "mass_estimate_topic" value="/$(arg uav_name)/control_manager/mass_estimate"/>
       <param name="thrust_force_topic" value="/$(arg uav_name)/control_manager/thrust_force"/>
 
+      <param name="height_topic" value="/odometry/height"/>
+
       <!-- <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R"] </rosparam> -->
       <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R"] </rosparam>
       <!-- <rosparam param="measured_poses_topics" > ["filteredPoses"] </rosparam> -->
