@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(my_code)
+project(vertical_estimator)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -32,6 +32,7 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_msgs
   mavros_msgs
   message_generation
+  dynamic_reconfigure
 )
 find_package(Eigen3 REQUIRED)
 
@@ -111,10 +112,10 @@ find_package(Eigen3 REQUIRED)
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+  cfg/rangeTopicSwitcher.cfg
+  
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -128,8 +129,8 @@ find_package(Eigen3 REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES VerticalEstimator
- 
-
+ CATKIN_DEPENDS
+ dynamic_reconfigure
 )
 
 ###########
@@ -154,6 +155,7 @@ add_library(VerticalEstimator
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
 add_dependencies(VerticalEstimator ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
@@ -224,6 +226,12 @@ install(DIRECTORY config
 install(DIRECTORY launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
+
+# Install dynamic_reconfigure parameters
+# install(DIRECTORY cfg
+#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+# )
+
 
 
 #############

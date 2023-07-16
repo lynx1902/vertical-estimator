@@ -33,7 +33,7 @@ windows:
   - control:
       layout: tiled
       panes:
-        - export UAV_NAME=uav29; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=./custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml custom_range_topic:=garmin/range
+        - export UAV_NAME=uav29; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=./custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml custom_range_topic:=garmin/range2
         - export UAV_NAME=uav30; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=./custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml custom_range_topic:=garmin/range
         - export UAV_NAME=uav38; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=./custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml custom_range_topic:=garmin/range
         - export UAV_NAME=uav39; waitForOdometry; sleep 1; roslaunch mrs_uav_general core.launch config_odometry:=./custom_configs/odometry.yaml config_mpc_tracker:=./custom_configs/mpc_tracker.yaml config_constraint_manager:=./custom_configs/constraints.yaml custom_range_topic:=garmin/range
@@ -82,10 +82,10 @@ windows:
   - vertical_estimator:
       layout: tiled
       panes:
-        - export UAV_NAME=uav29; waitForOdometry; roslaunch my_code vertical_estimator.launch
-          #       - export UAV_NAME=uav30; waitForOdometry; roslaunch my_code vertical_estimator.launch
-          #        - export UAV_NAME=uav38; waitForOdometry; roslaunch my_code vertical_estimator.launch
-          #   - export UAV_NAME=uav39; waitForOdometry; roslaunch my_code vertical_estimator.launch
+        - export UAV_NAME=uav29; waitForOdometry; roslaunch vertical_estimator vertical_estimator.launch
+        # - export UAV_NAME=uav30; waitForOdometry; roslaunch vertical_estimator vertical_estimator.launch
+        # - export UAV_NAME=uav38; waitForOdometry; roslaunch vertical_estimator vertical_estimator.launch
+        # - export UAV_NAME=uav39; waitForOdometry; roslaunch vertical_estimator vertical_estimator.launch
   
   
  
@@ -148,11 +148,11 @@ windows:
   - goto:
       layout: even-vertical
       panes:
-        -  'export UAV_NAME=uav29; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-25, 10.0, 3.5, 1.57\]\"'
-        -  'export UAV_NAME=uav30; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-31, 15.0, 3.5, 0.0\]\"'
-        -  'export UAV_NAME=uav38; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-19, 15.0, 3.5, 3.14\]\"'
+        -  'export UAV_NAME=uav29; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-25, 10.0, 1.5, 1.57\]\"'
+        -  'export UAV_NAME=uav30; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-31, 15.0, 1.5, 0.0\]\"'
+        -  'export UAV_NAME=uav38; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-19, 15.0, 1.5, 3.14\]\"'
         
-        -  'export UAV_NAME=uav39; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-25, 20.0, 3.5, -1.57\]\"'
+        -  'export UAV_NAME=uav39; history -s rosservice call /$UAV_NAME/control_manager/goto \"goal: \[-25, 20.0, 1.5, -1.57\]\"'
   # - waypoint-flier-uav29:
   #     layout: tiled
   #     panes:
@@ -161,10 +161,13 @@ windows:
   #       - history -s rosservice call /$UAV_NAME/waypoint_flier/start_waypoints_following
   #       - history -s rosservice call /$UAV_NAME/waypoint_flier/stop_waypoints_following
 
-  # - plotting:
-  #     layout: tiled
-  #     panes:
-  #       - waitForOdometry; rosrun plotjuggler plotjuggler
+  - transforms:
+      layout: tiled
+      panes:
+        - waitForOdometry; sleep 2; rostopic echo /uav29/vertical_estimator/range_output
+        - waitForOdometry; sleep 2; rostopic echo /uav29/vertical_estimator/transformed_estimator
+        - waitForOdometry; sleep 2; rostopic echo /uav29/garmin/range
+        - waitForOdometry; sleep 2; rostopic echo /uav29/garmin/range2
 
   - recording:
       layout: tiled
@@ -172,7 +175,7 @@ windows:
         # - waitForOdometry; rosbag record -O uav_impdebug.bag /uav29/vertical_estimator/range_output /uav29/garmin/range /uav29/vertical_estimator/uvdar_pos_debug /uav29/odometry/odom_main /uav29/odometry/imu_untilted /uav29/vertical_estimator/velocity_output /uav29/vertical_estimator/uvdar_velocity /uav29/vertical_estimator/imu_velocity /uav29/odometry/ground_truth
         # - waitForOdometry; rosbag record -O uav29_uvdar_check.bag /uav29/vertical_estimator/velocity_uvdar_fcu /uav29/vertical_estimator/vert_estimator_output_fcu /uav29/vertical_estimator/uvdar_pos_check      
         # - waitForOdometry; rosbag record -O uav_alldebug.bag /uav29/vertical_estimator/range_output /uav29/odometry/odom_main /uav29/vertical_estimator/ /uav30/vertical_estimator/range_output /uav30/odometry/odom_main /uav38/vertical_estimator/range_output /uav38/odometry/odom_main /uav39/odometry/odom_main /uav39/vertical_estimator/range_output
-        - waitForOdometry; rosbag record -O july3odom_debug.bag 
+        - waitForOdometry; rosbag record -O july13.bag 
           /uav29/vertical_estimator/uvdar_velocity 
           /uav29/vertical_estimator/imu_velocity 
           /uav29/vertical_estimator/uvdar_pos_debug 
@@ -186,6 +189,8 @@ windows:
           /uav29/odometry/odom_main
           /uav29/odometry/imu_untilted
           /uav29/garmin/range
+          /uav29/vertical_estimator/garmin_transform
+          /uav29/vertical_estimator/transformed_estimator
           /uav30/vertical_estimator/uvdar_velocity 
           /uav30/vertical_estimator/imu_velocity 
           /uav30/vertical_estimator/uvdar_pos_debug 

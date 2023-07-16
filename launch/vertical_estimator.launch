@@ -20,7 +20,7 @@
       
       <param name="uav_name" value="$(arg uav_name)" />
       
-      <rosparam file="$(find my_code)/config/vertical_estimator.yaml" />
+      <rosparam file="$(find vertical_estimator)/config/vertical_estimator.yaml" />
     
       
       <param name="odom_state_topic" value="/$(arg uav_name)/odometry/uav_state" />
