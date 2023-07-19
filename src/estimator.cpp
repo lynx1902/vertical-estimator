@@ -53,21 +53,21 @@ namespace mrs_lib
     const int n_inputs = 1;
     const int n_measurements = 3;
 
-    using nblkf_t = LKF<n_states, n_inputs, n_measurements>;
+    using lkf_t = LKF<n_states, n_inputs, n_measurements>;
 } // namespace mrs_lib
 
 
-using A_t = mrs_lib::nblkf_t::A_t;
-using B_t = mrs_lib::nblkf_t::B_t;
-using H_t = mrs_lib::nblkf_t::H_t;
-using Q_t = mrs_lib::nblkf_t::Q_t;
-using u_t = mrs_lib::nblkf_t::u_t;
+using A_t = mrs_lib::lkf_t::A_t;
+using B_t = mrs_lib::lkf_t::B_t;
+using H_t = mrs_lib::lkf_t::H_t;
+using Q_t = mrs_lib::lkf_t::Q_t;
+using u_t = mrs_lib::lkf_t::u_t;
 
-using x_t = mrs_lib::nblkf_t::x_t;
-using P_t = mrs_lib::nblkf_t::P_t;
-using R_t = mrs_lib::nblkf_t::R_t;
+using x_t = mrs_lib::lkf_t::x_t;
+using P_t = mrs_lib::lkf_t::P_t;
+using R_t = mrs_lib::lkf_t::R_t;
 
-using nbstatecov_t = mrs_lib::nblkf_t::statecov_t;
+using statecov_t = mrs_lib::lkf_t::statecov_t;
 //}
 
 namespace vertical_estimator
@@ -143,6 +143,9 @@ namespace vertical_estimator
             pub_garmin_transform = nh_.advertise<sensor_msgs::Range>("garmin_transform",1);
 
             pub_transformed_estimator = nh_.advertise<sensor_msgs::Range>("transformed_estimator",1);
+
+            pub_nb_pose = nh_.advertise<visualization_msgs::Marker>("debug_nb_pose",1);
+            pub_agent_pose = nh_.advertise<visualization_msgs::Marker>("debug_agent_pose",1);
 
             // Subscribers
             sub_garmin_range = nh_.subscribe(range_topic, 1, &VerticalEstimator::GarminRange, this);
@@ -323,7 +326,7 @@ namespace vertical_estimator
               
 
             
-            filter = std::make_unique<mrs_lib::nblkf_t>(A, B, H);
+            filter = std::make_unique<mrs_lib::lkf_t>(A, B, H);
 
             last_imu_meas = ros::Time::now();
 
@@ -424,7 +427,7 @@ namespace vertical_estimator
 
                 sensor_msgs::Range smoothOutput = smoothRange(vert_est_output, 0.2);
 
-                sensor_msgs::Range ret_transform = transformRangeMessage(smoothOutput);
+                sensor_msgs::Range ret_transform = invTransformRangeMessage(smoothOutput);
                 
                 pub_transformed_estimator.publish(ret_transform);
 
@@ -434,10 +437,7 @@ namespace vertical_estimator
                 } else if (use_estimator) {
                     pub_vertical_estimator_output.publish(smoothOutput);
                 }
-                // pub_vertical_estimator_output.publish(ret_transform);  
-                // pub_vertical_estimator_output.publish(rmsg);
             
-
                 geometry_msgs::Point velo;
                 velo.x = filter_state_focal.x(1) * cos(-focal_heading) - filter_state_focal.x(3) * sin(-focal_heading);
                 velo.y = filter_state_focal.x(1) * sin(-focal_heading) + filter_state_focal.x(3) * cos(-focal_heading);
@@ -470,7 +470,7 @@ namespace vertical_estimator
                 
                 pub_debug_position.publish(sphere);
                 
-                ROS_INFO_THROTTLE(0.25, "H: %f, H_dt: %f, H_ddt: %f", filter_state_focal.x(4), filter_state_focal.x(5), filter_state_focal.x(6));
+                ROS_INFO_THROTTLE(0.25, "Pz: %f, Vz: %f, Az: %f", filter_state_focal.x(4), filter_state_focal.x(5), filter_state_focal.x(6));
             }
         }
         //}
@@ -498,7 +498,7 @@ namespace vertical_estimator
                 arrow.pose.position.y = nb.filter_state.x(2);
                 arrow.pose.position.z = nb.filter_state.x(4);
 
-                arrow.pose.orientation = mrs_lib::AttitudeConverter(0, 0, focal_heading);
+                arrow.pose.orientation = mrs_lib::AttitudeConverter(0, 0, -focal_heading);
                 arrow.scale.x = 1.0;
                 arrow.scale.y = 0.1;
                 arrow.scale.z = 0.1;
@@ -595,15 +595,15 @@ namespace vertical_estimator
 
 
             try{
-                filter->H << 0, 0, 0, 0, 1, 0, 0,
+                filter->H << 0, 0, 0, 0, 0, 0, 0,
                                     0, 0, 0, 0, 0, 0, 0,
-                                    0, 0, 0, 0, 0, 0, 0;
+                                    0, 0, 0, 0, 1, 0, 0;
 
                 R_t R;
-                R = Eigen::MatrixXd::Identity(3,3) * 1;
+                R << Eigen::MatrixXd::Identity(3,3) * 0.1;
                 Eigen::VectorXd z(3);
 
-                z(0) = height_msg_local.value;
+                z(2) = height_msg_local.value;
 
                 agents[nb_index].filter_state = filter->correct(agents[nb_index].filter_state, z, R);
 
@@ -653,7 +653,7 @@ namespace vertical_estimator
                                     0, 0, 0, 0, 0, 1, 0;
                                     
                 R_t R;
-                R = Eigen::MatrixXd::Identity(3,3) * 1;
+                R << Eigen::MatrixXd::Identity(3,3) * 1;
                 Eigen::VectorXd z(3);
 
                 z(0) = odom_msg->twist.twist.linear.x;
@@ -707,7 +707,7 @@ namespace vertical_estimator
             }
 
             Intersection sum_of_ints;
-            sum_of_ints.ints_count = 0;
+           
 
             for (auto &meas : msg_local.poses)
             {
@@ -758,8 +758,15 @@ namespace vertical_estimator
                         normalizedQuaternion = tf2::toMsg(q_temp);
                         agents[aid].quat = normalizedQuaternion;
                         // agents[aid].quat = res_l_.value().pose.pose.orientation;
-                       
-                        
+
+                        geometry_msgs::Point focal_state;
+                        for(auto &foc : agents){
+                            if(foc.focal){
+                              focal_state.x = foc.filter_state.x(0); 
+                              focal_state.y = foc.filter_state.x(2);
+                              focal_state.z = foc.filter_state.x(4);  
+                            }
+                        }
 
                         for (auto &nb : agents)
                         {
@@ -803,31 +810,79 @@ namespace vertical_estimator
                                     A.y = nb.filter_state.x(2);
                                     A.z = nb.filter_state.x(4);
 
+                                    geometry_msgs::Point nb_obs;
+                                    nb_obs.x = nb.pfcu.x;
+                                    nb_obs.y = nb.pfcu.y;
+                                    nb_obs.z = nb.pfcu.z;
+
                                     geometry_msgs::Point focal;
                                     focal.x = filter_state_focal.x(0);
                                     focal.y = filter_state_focal.x(2);
                                     focal.z = filter_state_focal.x(4);
 
-                                    double nb_dist = distanceForElevation(A,focal_position);
+                                    double nb_dist = distanceForElevation(A,focal_state);
 
                                     geometry_msgs::Point B;
-                                    B.x = A.x + cos(nb_hdg + focal_heading);
-                                    B.y = A.y + sin(nb_hdg + focal_heading);
+                                    B.x = A.x + cos(-nb_hdg - focal_heading);
+                                    B.y = A.y + sin(-nb_hdg - focal_heading);
                                     // B.z = A.z + 0.1*sin(Quat2Eul(nb.quat));
-                                    B.z = A.z + 0.1*sin(atan((focal_position.z- A.z)/nb_dist));
+                                    B.z = A.z + 0.1*sin(atan((focal_state.z- A.z)/nb_dist));
                                     
                                     geometry_msgs::Point C;
                                     C.x = agents[aid].filter_state.x(0);
                                     C.y = agents[aid].filter_state.x(2);
                                     C.z = agents[aid].filter_state.x(4); 
 
-                                    double agent_dist = calculateDistance(C,focal_position);
+                                    geometry_msgs::Point agent_obs;
+                                    agent_obs.x = agents[aid].pfcu.x;
+                                    agent_obs.y = agents[aid].pfcu.y;
+                                    agent_obs.z = agents[aid].pfcu.z;
+
+                                    double agent_dist = calculateDistance(C,focal_state);
                                     
                                     geometry_msgs::Point D;
-                                    D.x = C.x + cos(agents[aid].angle_z + focal_heading);
-                                    D.y = C.y + sin(agents[aid].angle_z + focal_heading);
+                                    D.x = C.x + cos(- agents[aid].angle_z - focal_heading);
+                                    D.y = C.y + sin(- agents[aid].angle_z - focal_heading);
                                     // D.z = C.z + 0.1*sin(Quat2Eul(agents[aid].quat));
-                                    D.z = C.z + 0.1*sin(atan((focal_position.z - C.z)/agent_dist));
+                                    D.z = C.z + 0.1*sin(atan((focal_state.z - C.z)/agent_dist));
+
+                                    visualization_msgs::Marker nb_arrow_pose;
+                                    nb_arrow_pose.header.frame_id = estimation_frame;
+                                    nb_arrow_pose.header.stamp = ros::Time::now();
+                                    nb_arrow_pose.id = aid; 
+                                    nb_arrow_pose.type = visualization_msgs::Marker::LINE_STRIP;
+                                    nb_arrow_pose.action = visualization_msgs::Marker::ADD;
+
+                                    nb_arrow_pose.pose.orientation = mrs_lib::AttitudeConverter(0, 0, (- nb_hdg - focal_heading));
+
+                                    nb_arrow_pose.scale.x = 0.1;
+                                    nb_arrow_pose.color.a = 1.0; 
+                                    nb_arrow_pose.color.r = 0.0;
+                                    nb_arrow_pose.color.g = 1.0;
+                                    nb_arrow_pose.color.b = 0.0;
+
+                                    nb_arrow_pose.points.push_back(A);
+                                    nb_arrow_pose.points.push_back(B);
+                                    pub_nb_pose.publish(nb_arrow_pose);
+
+                                    visualization_msgs::Marker agent_arrow_pose;
+                                    agent_arrow_pose.header.frame_id = estimation_frame;
+                                    agent_arrow_pose.header.stamp = ros::Time::now();
+                                    agent_arrow_pose.id = 0;
+                                    agent_arrow_pose.type = visualization_msgs::Marker::LINE_STRIP;
+                                    agent_arrow_pose.action = visualization_msgs::Marker::ADD;
+
+                                    agent_arrow_pose.pose.orientation = mrs_lib::AttitudeConverter(0, 0, (-agents[aid].angle_z - focal_heading));
+
+                                    agent_arrow_pose.scale.x = 0.1;
+                                    agent_arrow_pose.color.a = 1.0; 
+                                    agent_arrow_pose.color.r = 0.0;
+                                    agent_arrow_pose.color.g = 0.0;
+                                    agent_arrow_pose.color.b = 1.0;
+
+                                    agent_arrow_pose.points.push_back(C);
+                                    agent_arrow_pose.points.push_back(D);
+                                    pub_agent_pose.publish(agent_arrow_pose);
 
                                     Eigen::Vector3d dirAB, dirCD;
                                     dirAB(0) = B.x - A.x;
@@ -1480,7 +1535,7 @@ namespace vertical_estimator
             }
             acc_outlier.push_back(az_linear);
 
-            if(az_linear < 0.01 || az_linear > -0.01){
+            if(az_linear < 0.05 && az_linear > -0.05){
                 az_linear = 0.0;
             }
 
@@ -1495,7 +1550,7 @@ namespace vertical_estimator
             }
             vel_outlier.push_back(velocity_imu_focal.z);
            
-            if(velocity_imu_focal.z < 0.01 || velocity_imu_focal.z > - 0.01){
+            if(velocity_imu_focal.z < 0.05 && velocity_imu_focal.z > - 0.05){
                 velocity_imu_focal.z = 0.0;
             }
 
@@ -1608,7 +1663,7 @@ namespace vertical_estimator
                 }
             }
 
-            sensor_msgs::Range tf_rangemsg = invTransformRangeMessage(rmsg);
+            tf_rangemsg = transformRangeMessage(rmsg);
             pub_garmin_transform.publish(tf_rangemsg);
 
             
@@ -1667,7 +1722,7 @@ namespace vertical_estimator
                return;
             }
 
-            if(thrust_acc_corrected < 0.01 || thrust_acc_corrected > -0.01){
+            if(thrust_acc_corrected < 0.05 && thrust_acc_corrected > -0.05){
                 thrust_acc_corrected = 0.0;
             }
 
@@ -1682,7 +1737,7 @@ namespace vertical_estimator
                                             0, 0, 0, 0, 0, 0, 0,
                                             0, 0, 0, 0, 0, 0, 0;
                         R_t R;
-                        R = Eigen::MatrixXd::Identity(3,3) * 1;
+                        R = Eigen::MatrixXd::Identity(3,3) * 0.1;
                         Eigen::VectorXd z(3);
                         z(0) = thrust_acc_corrected;
 
@@ -1701,10 +1756,10 @@ namespace vertical_estimator
         sensor_msgs::Range transformRangeMessage(const sensor_msgs::Range &range_msg){
             sensor_msgs::Range range_msg_local = range_msg;
             tf::StampedTransform tf2gf_;
-            listener_.waitForTransform(garmin_frame, range_msg_local.header.frame_id, ros::Time(0), ros::Duration(3.0));
+            listener_.waitForTransform(estimation_frame, range_msg_local.header.frame_id, ros::Time(0), ros::Duration(3.0));
 
             try {
-                listener_.lookupTransform(garmin_frame, range_msg_local.header.frame_id, ros::Time(0), tf2gf_);
+                listener_.lookupTransform(estimation_frame, range_msg_local.header.frame_id, ros::Time(0), tf2gf_);
 
             }
             catch(tf::TransformException &ex) {
@@ -1712,14 +1767,14 @@ namespace vertical_estimator
                 ROS_WARN("NO RANGE TRANSFORM!");
                 return range_msg_local;
             }
-            tf::Vector3 original_pos(range_msg_local.range, 0, 0);
+            tf::Vector3 original_pos(0, 0,range_msg_local.range);
             tf::Vector3 transformed_pos = tf2gf_ * original_pos;
 
             sensor_msgs::Range transformed_range_msg;
             
 
-            transformed_range_msg.header.frame_id = garmin_frame;
-            // transformed_range_msg.header.stamp = range_msg_local.header.stamp;
+            transformed_range_msg.header.frame_id = estimation_frame;
+            transformed_range_msg.header.stamp = range_msg_local.header.stamp;
             transformed_range_msg.radiation_type = range_msg_local.radiation_type;
             transformed_range_msg.min_range = range_msg_local.min_range;
             transformed_range_msg.max_range = range_msg_local.max_range;
@@ -1727,7 +1782,7 @@ namespace vertical_estimator
 
             
 
-            transformed_range_msg.range = transformed_pos.getX();
+            transformed_range_msg.range = transformed_pos.getZ();
 
             return transformed_range_msg;
         }
@@ -1735,10 +1790,10 @@ namespace vertical_estimator
         sensor_msgs::Range invTransformRangeMessage(const sensor_msgs::Range &garmin_range){
             sensor_msgs::Range garmin_range_local = garmin_range;
             tf::StampedTransform tf2invgf_;
-            listener_.waitForTransform(estimation_frame, garmin_range_local.header.frame_id, ros::Time(0), ros::Duration(3.0));
+            listener_.waitForTransform(garmin_frame, garmin_range_local.header.frame_id, ros::Time(0), ros::Duration(3.0));
 
             try{
-                listener_.lookupTransform(estimation_frame, garmin_range_local.header.frame_id, ros::Time(0), tf2invgf_);
+                listener_.lookupTransform(garmin_frame, garmin_range_local.header.frame_id, ros::Time(0), tf2invgf_);
             }
             catch(tf::TransformException &ex){
                 ROS_ERROR("%s", ex.what());
@@ -1748,8 +1803,8 @@ namespace vertical_estimator
 
             sensor_msgs::Range tf_garmin_range;
 
-            tf_garmin_range.header.frame_id = estimation_frame;
-            // tf_garmin_range.header.stamp = garmin_range_local.header.stamp;
+            tf_garmin_range.header.frame_id = garmin_frame;
+            tf_garmin_range.header.stamp = garmin_range_local.header.stamp;
             tf_garmin_range.radiation_type = garmin_range_local.radiation_type;
             tf_garmin_range.max_range = garmin_range_local.max_range;
             tf_garmin_range.min_range = garmin_range_local.min_range;
@@ -1878,7 +1933,7 @@ namespace vertical_estimator
 
         double def_dt = 0.1;
 
-        std::unique_ptr<mrs_lib::nblkf_t> filter;
+        std::unique_ptr<mrs_lib::lkf_t> filter;
 
         A_t A;
         B_t B;
@@ -1900,7 +1955,7 @@ namespace vertical_estimator
         double focal_height = 0;
         geometry_msgs::Point focal_position; // for mrse debug
 
-        nbstatecov_t filter_state_focal;
+        statecov_t filter_state_focal;
         
         bool filter_valid = false;
         bool filter_init_focal = false;
@@ -1954,7 +2009,7 @@ namespace vertical_estimator
 
             bool filter_init;
 
-            nbstatecov_t filter_state;
+            statecov_t filter_state;
 
             double angle_z;
 
@@ -2035,6 +2090,12 @@ namespace vertical_estimator
         bool use_estimator;
 
         ros::Publisher pub_transformed_estimator;
+
+        sensor_msgs::Range tf_rangemsg;
+
+        ros::Publisher pub_nb_pose;
+
+        ros::Publisher pub_agent_pose;
     };
 
 } // namespace vertical_estimator
