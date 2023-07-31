@@ -49,7 +49,7 @@
 namespace mrs_lib
 {
     
-    const int n_states = 7;
+    const int n_states = 9;
     const int n_inputs = 1;
     const int n_measurements = 3;
 
@@ -291,18 +291,28 @@ namespace vertical_estimator
             }
 
 
-            A.resize(7,7);
-            B.resize(7,1);
-            H.resize(3,7);
-            Qq.resize(7,7);
+            A.resize(9,9);
+            B.resize(9,1);
+            H.resize(3,9);
+            Qq.resize(9,9);
 
-            A << 1, def_dt, 0, 0, 0, 0, 0,
-                0, 1, 0, 0, 0, 0, 0,
-                0, 0, 1, def_dt, 0, 0, 0,
-                0, 0, 0, 1, 0, 0, 0,
-                0, 0, 0, 0, 1, def_dt, def_dt*def_dt/2.0,
-                0, 0, 0, 0, 0, 1, def_dt,
-                0, 0, 0, 0, 0, 0, 0, 1;
+            A << 1, def_dt, def_dt*def_dt/2.0, 0, 0, 0, 0, 0, 0,
+                0, 1, def_dt, 0, 0, 0, 0, 0, 0,
+                0, 0, 1, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 1, def_dt, def_dt*def_dt/2.0, 0, 0, 0,
+                0, 0, 0, 0, 1, def_dt, 0, 0, 0,
+                0, 0, 0, 0, 0, 1, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 1, def_dt, def_dt*def_dt/2.0,
+                0, 0, 0, 0, 0, 0, 0, 1, def_dt,
+                0, 0, 0, 0, 0, 0, 0, 0, 1;
+
+            // A << 1, def_dt, 0, 0, 0, 0, 0,
+            //     0, 1, 0, 0, 0, 0, 0,
+            //     0, 0, 1, def_dt, 0, 0, 0,
+            //     0, 0, 0, 1, 0, 0, 0,
+            //     0, 0, 0, 0, 1, def_dt, def_dt*def_dt/2.0,
+            //     0, 0, 0, 0, 0, 1, def_dt,
+            //     0, 0, 0, 0, 0, 0, 0, 1;
 
             B << 0,
                 0,
@@ -310,19 +320,31 @@ namespace vertical_estimator
                 0,
                 0,
                 0,
+                0,
+                0,
                 0;
 
-            H << 1, 0, 0, 0, 0, 0, 0,
-                0, 0, 1, 0, 0, 0, 0,
-                0, 0, 0, 0, 1, 0, 0;
+            H << 1, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 1, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 1, 0, 0, 0, 0;
 
-            Qq << 1.0, 0, 0, 0, 0, 0, 0,
-                0, 1.0, 0, 0, 0, 0, 0,
-                0, 0, 1.0, 0, 0, 0, 0,
-                0, 0, 0, 1.0, 0, 0, 0,
-                0, 0, 0, 0, 1.0, 0, 0,
-                0, 0, 0, 0, 0, 1.0, 0,
-                0, 0, 0, 0, 0, 0, 1.0;
+            Qq << 1, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 1, 0, 0, 0, 0, 0, 0, 0, 
+                0, 0, 1, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 1, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 1, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 1, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 1, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 1;    
+
+            // Qq << 1.0, 0, 0, 0, 0, 0, 0,
+            //     0, 1.0, 0, 0, 0, 0, 0,
+            //     0, 0, 1.0, 0, 0, 0, 0,
+            //     0, 0, 0, 1.0, 0, 0, 0,
+            //     0, 0, 0, 0, 1.0, 0, 0,
+            //     0, 0, 0, 0, 0, 1.0, 0,
+            //     0, 0, 0, 0, 0, 0, 1.0;
               
 
             
@@ -421,7 +443,7 @@ namespace vertical_estimator
                 vert_est_output.min_range = 0.0;
                 vert_est_output.max_range = 20.0;
                 vert_est_output.field_of_view = M_PI;
-                vert_est_output.range = filter_state_focal.x(4);
+                vert_est_output.range = filter_state_focal.x(6);
 
                 pub_estimator_output.publish(vert_est_output);
 
@@ -439,9 +461,9 @@ namespace vertical_estimator
                 }
             
                 geometry_msgs::Point velo;
-                velo.x = filter_state_focal.x(1) * cos(-focal_heading) - filter_state_focal.x(3) * sin(-focal_heading);
-                velo.y = filter_state_focal.x(1) * sin(-focal_heading) + filter_state_focal.x(3) * cos(-focal_heading);
-                velo.z = filter_state_focal.x(5);
+                velo.x = filter_state_focal.x(1) * cos(-focal_heading) - filter_state_focal.x(4) * sin(-focal_heading);
+                velo.y = filter_state_focal.x(1) * sin(-focal_heading) + filter_state_focal.x(4) * cos(-focal_heading);
+                velo.z = filter_state_focal.x(7);
                 pub_vertical_estimator_output_fcu.publish(velo);
 
                 std::string output_frame = estimation_frame;
@@ -456,8 +478,8 @@ namespace vertical_estimator
                 sphere.action = 0;
 
                 sphere.pose.position.x = filter_state_focal.x(0);
-                sphere.pose.position.y = filter_state_focal.x(2);
-                sphere.pose.position.z = filter_state_focal.x(4);
+                sphere.pose.position.y = filter_state_focal.x(3);
+                sphere.pose.position.z = filter_state_focal.x(6);
 
                 sphere.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
                 sphere.scale.x = 0.3;
@@ -470,7 +492,7 @@ namespace vertical_estimator
                 
                 pub_debug_position.publish(sphere);
                 
-                ROS_INFO_THROTTLE(0.25, "Pz: %f, Vz: %f, Az: %f", filter_state_focal.x(4), filter_state_focal.x(5), filter_state_focal.x(6));
+                ROS_INFO_THROTTLE(0.25, "Hx: %f, Hv: %f, Ha: %f", filter_state_focal.x(6), filter_state_focal.x(7), filter_state_focal.x(8));
             }
         }
         //}
@@ -495,8 +517,8 @@ namespace vertical_estimator
                 arrow.action = 0;
 
                 arrow.pose.position.x = nb.filter_state.x(0);
-                arrow.pose.position.y = nb.filter_state.x(2);
-                arrow.pose.position.z = nb.filter_state.x(4);
+                arrow.pose.position.y = nb.filter_state.x(3);
+                arrow.pose.position.z = nb.filter_state.x(6);
 
                 arrow.pose.orientation = mrs_lib::AttitudeConverter(0, 0, -focal_heading);
                 arrow.scale.x = 1.0;
@@ -541,9 +563,38 @@ namespace vertical_estimator
                 0, 0, 0, 0, 1, dt, dt*dt/2.0,
                 0, 0, 0, 0, 0, 1, dt,
                 0, 0, 0, 0, 0, 0, 1;
+
+            A << 1, dt, dt*dt/2.0, 0, 0, 0, 0, 0, 0,
+                0, 1, dt, 0, 0, 0, 0, 0, 0,
+                0, 0, 1, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 1, dt, dt*dt/2.0, 0, 0, 0,
+                0, 0, 0, 0, 1, dt, 0, 0, 0,
+                0, 0, 0, 0, 0, 1, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 1, dt, dt*dt/2.0,
+                0, 0, 0, 0, 0, 0, 0, 1, dt,
+                0, 0, 0, 0, 0, 0, 0, 0, 1;    
                 
 
                 return A;
+        }
+
+        H_t H_n(int type){
+            if(type == 0){
+                H << 1, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 1, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 1, 0, 0;
+            } else if (type == 1){
+                H << 0, 1, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 1, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 1, 0;
+            } else if (type == 2){
+                H << 0, 0, 1, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 1, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 1;
+            } else {
+                ROS_WARN_THROTTLE(1.0,"Wrong measurement matrix type");
+            }
+            return H;
         }
 
         //}
@@ -595,9 +646,9 @@ namespace vertical_estimator
 
 
             try{
-                filter->H << 0, 0, 0, 0, 0, 0, 0,
-                                    0, 0, 0, 0, 0, 0, 0,
-                                    0, 0, 0, 0, 1, 0, 0;
+                filter->H << 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 1, 0, 0;
 
                 R_t R;
                 R << Eigen::MatrixXd::Identity(3,3) * 0.1;
@@ -648,9 +699,7 @@ namespace vertical_estimator
 
             try
             {
-                filter->H << 0, 1, 0, 0, 0, 0, 0,
-                                    0, 0, 0, 1, 0, 0, 0,
-                                    0, 0, 0, 0, 0, 1, 0;
+                filter->H = H_n(Ve);
                                     
                 R_t R;
                 R << Eigen::MatrixXd::Identity(3,3) * 1;
@@ -763,8 +812,8 @@ namespace vertical_estimator
                         for(auto &foc : agents){
                             if(foc.focal){
                               focal_state.x = foc.filter_state.x(0); 
-                              focal_state.y = foc.filter_state.x(2);
-                              focal_state.z = foc.filter_state.x(4);  
+                              focal_state.y = foc.filter_state.x(3);
+                              focal_state.z = foc.filter_state.x(6);  
                             }
                         }
 
@@ -807,8 +856,8 @@ namespace vertical_estimator
                                     // /* Method 1 Intersection Calculation //{ */
                                     geometry_msgs::Point A;
                                     A.x = nb.filter_state.x(0);
-                                    A.y = nb.filter_state.x(2);
-                                    A.z = nb.filter_state.x(4);
+                                    A.y = nb.filter_state.x(3);
+                                    A.z = nb.filter_state.x(6);
 
                                     geometry_msgs::Point nb_obs;
                                     nb_obs.x = nb.pfcu.x;
@@ -817,8 +866,8 @@ namespace vertical_estimator
 
                                     geometry_msgs::Point focal;
                                     focal.x = filter_state_focal.x(0);
-                                    focal.y = filter_state_focal.x(2);
-                                    focal.z = filter_state_focal.x(4);
+                                    focal.y = filter_state_focal.x(3);
+                                    focal.z = filter_state_focal.x(6);
 
                                     double nb_dist = distanceForElevation(A,focal_state);
 
@@ -830,8 +879,8 @@ namespace vertical_estimator
                                     
                                     geometry_msgs::Point C;
                                     C.x = agents[aid].filter_state.x(0);
-                                    C.y = agents[aid].filter_state.x(2);
-                                    C.z = agents[aid].filter_state.x(4); 
+                                    C.y = agents[aid].filter_state.x(3);
+                                    C.z = agents[aid].filter_state.x(6); 
 
                                     geometry_msgs::Point agent_obs;
                                     agent_obs.x = agents[aid].pfcu.x;
@@ -862,7 +911,7 @@ namespace vertical_estimator
                                     nb_arrow_pose.color.b = 0.0;
 
                                     nb_arrow_pose.points.push_back(A);
-                                    nb_arrow_pose.points.push_back(B);
+                                    nb_arrow_pose.points.push_back(focal);
                                     pub_nb_pose.publish(nb_arrow_pose);
 
                                     visualization_msgs::Marker agent_arrow_pose;
@@ -881,7 +930,7 @@ namespace vertical_estimator
                                     agent_arrow_pose.color.b = 1.0;
 
                                     agent_arrow_pose.points.push_back(C);
-                                    agent_arrow_pose.points.push_back(D);
+                                    agent_arrow_pose.points.push_back(focal);
                                     pub_agent_pose.publish(agent_arrow_pose);
 
                                     Eigen::Vector3d dirAB, dirCD;
@@ -1208,20 +1257,22 @@ namespace vertical_estimator
 
                                         if (!filter_init_focal)
                                         {
-                                            Eigen::VectorXd poseVec(7);
+                                            Eigen::VectorXd poseVec(9);
                                             poseVec(0) = new_int.x; /*important part to figure out. Intersection of all poses to find actual
                                                                        coordinates*/
                                             poseVec(1) = 0;
-                                            poseVec(2) = new_int.y;
-                                            poseVec(3) = 0;
-                                            poseVec(4) = new_int.z;
+                                            poseVec(2) = 0;
+                                            poseVec(3) = new_int.y;
+                                            poseVec(4) = 0;
                                             poseVec(5) = 0;
-                                            poseVec(6) = 0; 
+                                            poseVec(6) = new_int.z; 
+                                            poseVec(7) = 0;
+                                            poseVec(8) = 0;
                                             
-                                            Eigen::MatrixXd poseCov(7,7);
-                                            poseCov << Eigen::MatrixXd::Identity(7, 7);
+                                            Eigen::MatrixXd poseCov(9,9);
+                                            poseCov << Eigen::MatrixXd::Identity(9, 9);
 
-                                            ROS_INFO("LKF initialized for the focal UAV at %f of GPS frame.", poseVec(4));
+                                            ROS_INFO("LKF initialized for the focal UAV at %f of GPS frame.", poseVec(6));
 
                                             last_meas_focal = ros::Time::now();
                                             last_meas_focal_main = ros::Time::now();
@@ -1234,9 +1285,7 @@ namespace vertical_estimator
 
                                             try
                                             {
-                                                filter->H << 1, 0, 0, 0, 0, 0, 0,
-                                                                    0, 0, 1, 0, 0, 0, 0,
-                                                                    0, 0, 0, 0, 1, 0, 0;
+                                                filter->H = H_n(Po);
                                                                     
 
                                                 R_t R;
@@ -1289,20 +1338,22 @@ namespace vertical_estimator
 
                     if (!agents[aid].filter_init)
                     {
-                        Eigen::VectorXd poseVec(7);
+                        Eigen::VectorXd poseVec(9);
                         poseVec(0) = res_l_.value().pose.pose.position.x;
                         poseVec(1) = 0;
-                        poseVec(2) = res_l_.value().pose.pose.position.y;
-                        poseVec(3) = 0;
-                        poseVec(4) = res_l_.value().pose.pose.position.z;
+                        poseVec(2) = 0;
+                        poseVec(3) = res_l_.value().pose.pose.position.y;
+                        poseVec(4) = 0;
                         poseVec(5) = 0;
-                        poseVec(6) = 0;
+                        poseVec(6) = res_l_.value().pose.pose.position.z;
+                        poseVec(7) = 0;
+                        poseVec(8) = 0;
                         
-                        Eigen::MatrixXd poseCov(7, 7);
-                        poseCov << Eigen::MatrixXd::Identity(7, 7);
+                        Eigen::MatrixXd poseCov(9, 9);
+                        poseCov << Eigen::MatrixXd::Identity(9, 9);
 
                         ROS_INFO("LKF initialized for UAV%d with UVDAR reloc at %f, %f, %f of gps frame.", agents[aid].name_id,
-                                 poseVec(4), poseVec(5), poseVec(6));
+                                 poseVec(6), poseVec(7), poseVec(8));
 
                         agents[aid].last_meas_u = ros::Time::now();
                         agents[aid].last_meas_s = ros::Time::now();
@@ -1320,9 +1371,7 @@ namespace vertical_estimator
                             
                             try
                             {
-                                filter->H << 1, 0, 0, 0, 0, 0, 0,
-                                                    0, 0, 1, 0, 0, 0, 0,
-                                                    0, 0, 0, 0, 1, 0, 0;
+                                filter->H = H_n(Po);
 
                                 R_t R;
                                 R = Eigen::MatrixXd::Identity(3,3) * 0.00001;
@@ -1432,9 +1481,7 @@ namespace vertical_estimator
                     {
                         try
                         {
-                            filter->H << 0, 1, 0, 0, 0, 0, 0,
-                                                0, 0, 0, 1, 0, 0, 0,
-                                                0, 0, 0, 0, 0, 1, 0;
+                            filter->H = H_n(Ve);
 
                             R_t R;
                             R = Eigen::MatrixXd::Identity(3, 3) * 3.0;
@@ -1570,9 +1617,7 @@ namespace vertical_estimator
                 if(filter_init_focal){
 
                      try {
-                        filter->H << 0, 1, 0, 0, 0, 0, 0,
-                                            0, 0, 0, 1, 0, 0, 0,
-                                            0, 0, 0, 0, 0, 1, 0;
+                        filter->H = H_n(Ve);
 
                         R_t R;
 
@@ -1602,9 +1647,7 @@ namespace vertical_estimator
                 else {
                     if((ros::Time::now() - last_imuac_meas).toSec() > 0.05){
                         try {
-                            filter->H <<0, 0, 0, 0, 0, 0, 0,
-                                                0, 0, 0, 0, 0, 0, 0,
-                                                0, 0, 0, 0, 0, 0, 1;
+                            filter->H = H_n(Ac);
 
                             R_t R;
                             R = Eigen::MatrixXd::Identity(3,3) * 1;
@@ -1733,13 +1776,13 @@ namespace vertical_estimator
             pub_thrust_debug.publish(th_debug);
 
             try {
-                        filter->H << 0, 0, 0, 0, 0, 0, 1,
-                                            0, 0, 0, 0, 0, 0, 0,
-                                            0, 0, 0, 0, 0, 0, 0;
+                        filter->H << 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0, 1;
                         R_t R;
                         R = Eigen::MatrixXd::Identity(3,3) * 0.1;
                         Eigen::VectorXd z(3);
-                        z(0) = thrust_acc_corrected;
+                        z(2) = thrust_acc_corrected;
 
                         filter_state_focal = filter->correct(filter_state_focal, z, R);
                         if(isnan(filter_state_focal.x(4))){
