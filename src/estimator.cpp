@@ -968,6 +968,23 @@ namespace vertical_estimator
 
                                     Eigen::Vector3d crossProduct;
                                     crossProduct = dirAB.cross(dirCD);
+
+                                    double a1 = B.y - A.y;
+                                    double b1 = A.x - B.x;
+                                    double c1 = a1*(A.x) + b1*(A.y);
+
+                                    double a2 = D.y - C.y;
+                                    double b2 = C.x - D.x;
+                                    double c2 = a2*(C.x) + b2*(C.y);
+
+                                    double det = a1*b2 - a2*b1;
+
+                                    if(abs(det) < 0.0001){
+                                        ROS_ERROR("Intersection not found, det:%f", det);
+                                    } else {
+                                        new_int.x = (b2*c1 - b1*c2)/det;
+                                        new_int.y = (a1*c2 - a2*c1)/det;
+                                    }
                                   
                                     if(crossProduct.norm() > 1e-6){
                                         // Non zero cross product magnitude indicates skew lines or intersecting lines
@@ -1010,8 +1027,8 @@ namespace vertical_estimator
                                             if(dist_z > 0.0){
                                             ROS_WARN("Skew Lines");
                                             if(dirAB(2) < 0.0 && dirCD(2) < 0.0){
-                                              new_int.x = intersectionAB.x + (dist_x/2.0);
-                                              new_int.y = intersectionAB.y + (dist_y/2.0);
+                                            //   new_int.x = intersectionAB.x + (dist_x/2.0);
+                                            //   new_int.y = intersectionAB.y + (dist_y/2.0);
                                               if(intersectionAB.z > intersectionCD.z){
                                                 new_int.z = (intersectionAB.z) - (dist_z/2.0);
                                               } else {
@@ -1027,8 +1044,8 @@ namespace vertical_estimator
                                                 }
                                             }
                                             else if(dirAB(2) > 0.0 && dirCD(2) > 0.0){
-                                                new_int.x = intersectionAB.x + (dist_x/2.0);
-                                                new_int.y = intersectionAB.y + (dist_y/2.0);
+                                                // new_int.x = intersectionAB.x + (dist_x/2.0);
+                                                // new_int.y = intersectionAB.y + (dist_y/2.0);
                                                 if(intersectionAB.z < intersectionCD.z){
                                                     new_int.z = intersectionAB.z + (dist_z/2.0);
                                                 } else {
@@ -1047,8 +1064,8 @@ namespace vertical_estimator
                                             else {
                                                 ROS_WARN("Opposite Slopes");
                                                 if(intersectionAB.z < intersectionCD.z){
-                                                    new_int.x = intersectionAB.x + (dist_x/2.0);
-                                                    new_int.y = intersectionAB.y + (dist_y/2.0);
+                                                    // new_int.x = intersectionAB.x + (dist_x/2.0);
+                                                    // new_int.y = intersectionAB.y + (dist_y/2.0);
                                                     double calc_z = intersectionAB.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0.0){
@@ -1061,8 +1078,8 @@ namespace vertical_estimator
                                                     }
                                                 }
                                                 else if (intersectionCD.z < intersectionAB.z){
-                                                    new_int.x = intersectionAB.x + (dist_x/2.0);
-                                                    new_int.y = intersectionAB.y + (dist_y/2.0);
+                                                    // new_int.x = intersectionAB.x + (dist_x/2.0);
+                                                    // new_int.y = intersectionAB.y + (dist_y/2.0);
                                                     double calc_z = intersectionCD.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0){
@@ -1093,16 +1110,16 @@ namespace vertical_estimator
 
 
                                             if(crossCDandL.dot(crossProduct) > 0){
-                                                new_int.x = A.x + (h/k) * dirAB(0);
-                                                new_int.y = A.y + (h/k) * dirAB(1);
+                                                // new_int.x = A.x + (h/k) * dirAB(0);
+                                                // new_int.y = A.y + (h/k) * dirAB(1);
                                                 new_int.z = A.z + (h/k) * dirAB(2);
                                                 if(new_int.z < 0.0){
                                                     ROS_ERROR("Line 755 calc");
                                                     new_int.z = (A.z + C.z)/2.0;
                                                 }
                                             } else {
-                                                new_int.x = A.x - (h/k) * dirAB(0);
-                                                new_int.y = A.y - (h/k) * dirAB(1);
+                                                // new_int.x = A.x - (h/k) * dirAB(0);
+                                                // new_int.y = A.y - (h/k) * dirAB(1);
                                                 new_int.z = A.z - (h/k) * dirAB(2);
                                                 if(new_int.z < 0.0){
                                                     ROS_ERROR("Line 760 calc");
@@ -1128,8 +1145,8 @@ namespace vertical_estimator
                                         
                                         
                                         
-                                        new_int.x = (A.x) + (dist_x/2.0);
-                                        new_int.y = (A.y) + (dist_y/2.0);
+                                        // new_int.x = (A.x) + (dist_x/2.0);
+                                        // new_int.y = (A.y) + (dist_y/2.0);
                                         new_int.z = (A.z) + (dist_z/2.0);
                                     
                                     } 
@@ -1599,6 +1616,14 @@ namespace vertical_estimator
                 az_linear = 0.0;
             }
 
+            if(ax < 0.05 && ax > -0.05){
+                ax = 0.0;
+            }
+
+            if(ay < 0.05 && ay > -0.05){
+                ay = 0.0;
+            }
+
             velocity_imu_focal.x = velocity_imu_focal.x + ax * dt;
             velocity_imu_focal.y = velocity_imu_focal.y + ay * dt;
             velocity_imu_focal.z =  velocity_imu_focal.z + az_linear * dt;
@@ -1612,6 +1637,14 @@ namespace vertical_estimator
            
             if(velocity_imu_focal.z < 0.05 && velocity_imu_focal.z > - 0.05){
                 velocity_imu_focal.z = 0.0;
+            }
+
+            if(velocity_imu_focal.x < 0.05 && velocity_imu_focal.x > - 0.05){
+                velocity_imu_focal.x = 0.0;
+            }
+
+            if(velocity_imu_focal.y < 0.05 && velocity_imu_focal.y > - 0.05){
+                velocity_imu_focal.y = 0.0;
             }
 
             geometry_msgs::Point imu_vel;
@@ -1866,10 +1899,10 @@ namespace vertical_estimator
             tf_garmin_range.min_range = garmin_range_local.min_range;
             tf_garmin_range.field_of_view = garmin_range_local.field_of_view;
 
-            tf::Vector3 original_reading( 0 , 0, garmin_range_local.range);
+            tf::Vector3 original_reading( garmin_range_local.range, 0, 0);
             tf::Vector3 transformed_reading = tf2invgf_ * original_reading;
 
-            tf_garmin_range.range = transformed_reading.z();
+            tf_garmin_range.range = transformed_reading.x();
 
             return tf_garmin_range;
         }
