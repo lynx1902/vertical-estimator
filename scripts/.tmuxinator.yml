@@ -83,9 +83,9 @@ windows:
       layout: tiled
       panes:
         - export UAV_NAME=uav29; waitForOdometry; roslaunch vertical_estimator vertical_estimator.launch
-        - export UAV_NAME=uav30; waitForOdometry; roslaunch vertical_estimator vertical_estimator.launch
-        - export UAV_NAME=uav38; waitForOdometry; roslaunch vertical_estimator vertical_estimator.launch
-        - export UAV_NAME=uav39; waitForOdometry; roslaunch vertical_estimator vertical_estimator.launch
+        # - export UAV_NAME=uav30; waitForOdometry; roslaunch vertical_estimator vertical_estimator.launch
+        # - export UAV_NAME=uav38; waitForOdometry; roslaunch vertical_estimator vertical_estimator.launch
+        # - export UAV_NAME=uav39; waitForOdometry; roslaunch vertical_estimator vertical_estimator.launch
   
   - uv_observer:
       layout: even-vertical
