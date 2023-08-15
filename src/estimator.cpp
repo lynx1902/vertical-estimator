@@ -147,8 +147,14 @@ namespace vertical_estimator
 
             pub_nb_pose = nh_.advertise<visualization_msgs::Marker>("debug_nb_pose",1);
             pub_agent_pose = nh_.advertise<visualization_msgs::Marker>("debug_agent_pose",1);
+            pub_nb_point = nh_.advertise<visualization_msgs::Marker>("nb_point",1);
+            pub_agent_point = nh_.advertise<visualization_msgs::Marker>("agent_point",1);
+
+            pub_skew_intersect = nh_.advertise<visualization_msgs::Marker>("skew_intersect",1);
 
             pub_filter_debug = nh_.advertise<nav_msgs::Odometry>("debug_filter_focal",1);
+
+            pub_resl_debug = nh_.advertise<geometry_msgs::Point>("debug_resl",1);
 
             // Subscribers
             sub_garmin_range = nh_.subscribe(range_topic, 1, &VerticalEstimator::GarminRange, this);
@@ -527,34 +533,7 @@ namespace vertical_estimator
                 
                 relative_poses.markers.push_back(arrow);
 
-                geometry_msgs::Point A;
-                A.x = nb.filter_state.x(0);
-                A.y = nb.filter_state.x(3);
-                A.z = nb.filter_state.x(6);
-
-                geometry_msgs::Point focal;
-                focal.x = filter_state_focal.x(0);
-                focal.y = filter_state_focal.x(3);
-                focal.z = filter_state_focal.x(6);
-
-                visualization_msgs::Marker nb_arrow_pose;
-                nb_arrow_pose.header.frame_id = estimation_frame;
-                nb_arrow_pose.header.stamp = ros::Time::now();
-                nb_arrow_pose.id = nb.uv_id; 
-                nb_arrow_pose.type = visualization_msgs::Marker::LINE_STRIP;
-                nb_arrow_pose.action = visualization_msgs::Marker::ADD;
-
-                nb_arrow_pose.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
-
-                nb_arrow_pose.scale.x = 0.1;
-                nb_arrow_pose.color.a = 1.0; 
-                nb_arrow_pose.color.r = 0.0;
-                nb_arrow_pose.color.g = 1.0;
-                nb_arrow_pose.color.b = 0.0;
-
-                nb_arrow_pose.points.push_back(A);
-                nb_arrow_pose.points.push_back(focal);
-                pub_nb_pose.publish(nb_arrow_pose);
+               
                 
             }
             pub_debug.publish(relative_poses);
@@ -634,56 +613,6 @@ namespace vertical_estimator
         }
         //}
 
-        void NeighborsStateReduced(const nav_msgs::OdometryConstPtr &odom_msg, size_t nb_index)
-        {
-            if (virt_id == (int)nb_index)
-            {
-                return;
-            }
-
-            if (!agents[nb_index].filter_init)
-            {
-                return;
-            }
-
-            u_t u = u_t::Zero();
-
-            double new_dt = std::fmax(std::fmin(std::fmin((ros::Time::now()-agents[nb_index].last_updt).toSec(), (ros::Time::now()-agents[nb_index].last_meas_u).toSec()), (ros::Time::now()-agents[nb_index].last_meas_s).toSec()),0.0);
-
-            // New updated filter
-            filter->A = A_dt(new_dt);
-
-            agents[nb_index].filter_state = filter->predict(agents[nb_index].filter_state, u, Qq, new_dt);
-
-            agents[nb_index].last_updt = ros::Time::now();   
-
-            try
-            {
-                filter->H = H_n(Ve);
-                                    
-                R_t R;
-                R << Eigen::MatrixXd::Identity(3,3) * 1;
-                Eigen::VectorXd z(3);
-
-                z(0) = odom_msg->twist.twist.linear.x;
-                z(1) = odom_msg->twist.twist.linear.y;
-                z(2) = odom_msg->twist.twist.linear.z;
-
-                agents[nb_index].filter_state = filter->correct(agents[nb_index].filter_state, z, R);
-
-                if(isnan(filter_state_focal.x(6))){
-                    ROS_ERROR("Filter error on line 608");
-                }
-
-                agents[nb_index].last_meas_s = ros::Time::now();
-            }
-            catch ([[maybe_unused]] std::exception e)
-            {
-                ROS_ERROR("LKF failed: %s", e.what());
-            }
-
-        }
-
         void NeighborsHeight(const mrs_msgs::Float64StampedConstPtr &height_msg, size_t nb_index)
         {
             if(virt_id == int(nb_index)){
@@ -694,15 +623,15 @@ namespace vertical_estimator
                 return;
             }
 
-            // u_t u = u_t::Zero();
+            u_t u = u_t::Zero();
 
-            // double new_dt = std::fmax(std::fmin(std::fmin((ros::Time::now()-agents[nb_index].last_updt).toSec(), (ros::Time::now()-agents[nb_index].last_meas_u).toSec()), (ros::Time::now()-agents[nb_index].last_meas_s).toSec()),0.0);
+            double new_dt = std::fmax(std::fmin(std::fmin((ros::Time::now()-agents[nb_index].last_updt).toSec(), (ros::Time::now()-agents[nb_index].last_meas_u).toSec()), (ros::Time::now()-agents[nb_index].last_meas_s).toSec()),0.0);
 
-            // filter->A = A_dt(new_dt);
+            filter->A = A_dt(new_dt);
 
-            // agents[nb_index].filter_state = filter->predict(agents[nb_index].filter_state, u, Qq, new_dt);
+            agents[nb_index].filter_state = filter->predict(agents[nb_index].filter_state, u, Qq, new_dt);
 
-            // agents[nb_index].last_updt = ros::Time::now();    
+            agents[nb_index].last_updt = ros::Time::now();    
 
             mrs_msgs::Float64Stamped height_msg_local;
             height_msg_local.header.frame_id = height_msg->header.frame_id;
@@ -736,6 +665,58 @@ namespace vertical_estimator
             }
 
         }
+
+        void NeighborsStateReduced(const nav_msgs::OdometryConstPtr &odom_msg, size_t nb_index)
+        {
+            if (virt_id == (int)nb_index)
+            {
+                return;
+            }
+
+            if (!agents[nb_index].filter_init)
+            {
+                return;
+            }
+
+            // u_t u = u_t::Zero();
+
+            // double new_dt = std::fmax(std::fmin(std::fmin((ros::Time::now()-agents[nb_index].last_updt).toSec(), (ros::Time::now()-agents[nb_index].last_meas_u).toSec()), (ros::Time::now()-agents[nb_index].last_meas_s).toSec()),0.0);
+
+            // // New updated filter
+            // filter->A = A_dt(new_dt);
+
+            // agents[nb_index].filter_state = filter->predict(agents[nb_index].filter_state, u, Qq, new_dt);
+
+            // agents[nb_index].last_updt = ros::Time::now();   
+
+            try
+            {
+                filter->H = H_n(Ve);
+                                    
+                R_t R;
+                R << Eigen::MatrixXd::Identity(3,3) * 1;
+                Eigen::VectorXd z(3);
+
+                z(0) = odom_msg->twist.twist.linear.x;
+                z(1) = odom_msg->twist.twist.linear.y;
+                z(2) = odom_msg->twist.twist.linear.z;
+
+                agents[nb_index].filter_state = filter->correct(agents[nb_index].filter_state, z, R);
+
+                if(isnan(filter_state_focal.x(6))){
+                    ROS_ERROR("Filter error on line 608");
+                }
+
+                agents[nb_index].last_meas_s = ros::Time::now();
+            }
+            catch ([[maybe_unused]] std::exception e)
+            {
+                ROS_ERROR("LKF failed: %s", e.what());
+            }
+
+        }
+
+        
         
 
         /* Cooperative subscribers //{ */
@@ -883,33 +864,79 @@ namespace vertical_estimator
                                     focal.y = filter_state_focal.x(3);
                                     focal.z = filter_state_focal.x(6);
 
-                                    double nb_dist = calculateDistance(A,focal);
+                                    double nb_dist = distanceForElevation(A,focal_position);
 
                                     geometry_msgs::Point B;
-                                    B.x = A.x + cos(nb_hdg + focal_heading);
-                                    B.y = A.y + sin(nb_hdg + focal_heading);
+                                    B.x = A.x - cos(nb_hdg + focal_heading);
+                                    B.y = A.y - sin(nb_hdg + focal_heading);
                                     // B.z = A.z + 0.1*sin(Quat2Eul(nb.quat));
-                                    B.z = A.z + 0.1*sin(atan((focal_position.z - A.z)/nb_dist));
+                                    double nb_elevation = atan((focal_position.z - A.z)/nb_dist);
+                                    B.z = A.z + sin(nb_elevation);
                                     
                                     geometry_msgs::Point C;
                                     C.x = agents[aid].filter_state.x(0);
                                     C.y = agents[aid].filter_state.x(3);
                                     C.z = agents[aid].filter_state.x(6); 
 
-                                    geometry_msgs::Point agent_obs;
-                                    agent_obs.x = agents[aid].pfcu.x;
-                                    agent_obs.y = agents[aid].pfcu.y;
-                                    agent_obs.z = agents[aid].pfcu.z;
+                                    // geometry_msgs::Point agent_obs;
+                                    // agent_obs.x = agents[aid].pfcu.x;
+                                    // agent_obs.y = agents[aid].pfcu.y;
+                                    // agent_obs.z = agents[aid].pfcu.z;
 
-                                    double agent_dist = calculateDistance(C,focal);
+                                    double agent_dist = distanceForElevation(C,focal_position);
                                     
                                     geometry_msgs::Point D;
-                                    D.x = C.x + cos(agents[aid].angle_z + focal_heading);
-                                    D.y = C.y + sin(agents[aid].angle_z + focal_heading);
+                                    D.x = C.x - cos(agents[aid].angle_z + focal_heading);
+                                    D.y = C.y - sin(agents[aid].angle_z + focal_heading);
                                     // D.z = C.z + 0.1*sin(Quat2Eul(agents[aid].quat));
-                                    D.z = C.z + 0.1*sin(atan((focal_position.z - C.z)/agent_dist));
+                                    double agent_elevation = atan((focal_position.z - C.z)/agent_dist);
+                                    D.z = C.z + sin(agent_elevation);
 
-                                    
+                                    visualization_msgs::Marker nb_pose;
+                                    nb_pose.header.frame_id = estimation_frame;
+                                    nb_pose.header.stamp = ros::Time::now();
+                                    nb_pose.id = nb.uv_id; 
+                                    nb_pose.type = visualization_msgs::Marker::SPHERE;
+                                    nb_pose.action = 0;
+
+                                    nb_pose.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
+
+                                    nb_pose.scale.x = 0.3;
+                                    nb_pose.scale.y = 0.3;
+                                    nb_pose.scale.z = 0.3;
+                                    nb_pose.color.a = 1.0; 
+                                    nb_pose.color.r = 1.0;
+                                    nb_pose.color.g = 1.0;
+                                    nb_pose.color.b = 0.0;
+
+                                    nb_pose.pose.position.x = B.x;
+                                    nb_pose.pose.position.y = B.y;
+                                    nb_pose.pose.position.z = B.z;
+
+                                    pub_nb_point.publish(nb_pose);
+
+                                    visualization_msgs::Marker agent_pose;
+                                    agent_pose.header.frame_id = estimation_frame;
+                                    agent_pose.header.stamp = ros::Time::now();
+                                    agent_pose.id = agents[aid].uv_id; 
+                                    agent_pose.type = visualization_msgs::Marker::SPHERE;
+                                    agent_pose.action = 0;
+
+                                    agent_pose.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
+
+                                    agent_pose.scale.x = 0.3;
+                                    agent_pose.scale.y = 0.3;
+                                    agent_pose.scale.z = 0.3;
+                                    agent_pose.color.a = 1.0; 
+                                    agent_pose.color.r = 1.0;
+                                    agent_pose.color.g = 0.0;
+                                    agent_pose.color.b = 1.0;
+
+                                    agent_pose.pose.position.x = D.x;
+                                    agent_pose.pose.position.y = D.y;
+                                    agent_pose.pose.position.z = D.z;
+
+                                    pub_agent_point.publish(agent_pose);
 
                                     if(filter_state_focal.x(0) > 50 || filter_state_focal.x(0) < -50){
                                         ROS_ERROR("Explosion!!!!");
@@ -922,6 +949,8 @@ namespace vertical_estimator
                                     dirCD(0) = D.x - C.x;
                                     dirCD(1) = D.y - C.y;
                                     dirCD(2) = D.z - C.z;
+
+                                    
 
                                     // Vector connecting any arbitrary point on AB to any arbitrary point on CD
                                     Eigen::Vector3d L;
@@ -942,24 +971,24 @@ namespace vertical_estimator
 
                                     double det = a1*b2 - a2*b1;
 
-                                    // visualization_msgs::Marker nb_arrow_pose;
-                                    // nb_arrow_pose.header.frame_id = estimation_frame;
-                                    // nb_arrow_pose.header.stamp = ros::Time::now();
-                                    // nb_arrow_pose.id = nb.uv_id; 
-                                    // nb_arrow_pose.type = visualization_msgs::Marker::LINE_STRIP;
-                                    // nb_arrow_pose.action = visualization_msgs::Marker::ADD;
+                                    visualization_msgs::Marker nb_arrow_pose;
+                                    nb_arrow_pose.header.frame_id = estimation_frame;
+                                    nb_arrow_pose.header.stamp = ros::Time::now();
+                                    nb_arrow_pose.id = nb.uv_id; 
+                                    nb_arrow_pose.type = visualization_msgs::Marker::LINE_STRIP;
+                                    nb_arrow_pose.action = visualization_msgs::Marker::ADD;
 
-                                    // nb_arrow_pose.pose.orientation = mrs_lib::AttitudeConverter(0, 0, (nb_hdg + focal_heading));
+                                    nb_arrow_pose.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
 
-                                    // nb_arrow_pose.scale.x = 0.1;
-                                    // nb_arrow_pose.color.a = 1.0; 
-                                    // nb_arrow_pose.color.r = 0.0;
-                                    // nb_arrow_pose.color.g = 1.0;
-                                    // nb_arrow_pose.color.b = 0.0;
+                                    nb_arrow_pose.scale.x = 0.1;
+                                    nb_arrow_pose.color.a = 1.0; 
+                                    nb_arrow_pose.color.r = 0.0;
+                                    nb_arrow_pose.color.g = 1.0;
+                                    nb_arrow_pose.color.b = 0.0;
 
-                                    // nb_arrow_pose.points.push_back(A);
-                                    // nb_arrow_pose.points.push_back(focal_position);
-                                    // pub_nb_pose.publish(nb_arrow_pose);
+                                    nb_arrow_pose.points.push_back(A);
+                                    nb_arrow_pose.points.push_back(B);
+                                    pub_nb_pose.publish(nb_arrow_pose);
 
                                     visualization_msgs::Marker agent_arrow_pose;
                                     agent_arrow_pose.header.frame_id = estimation_frame;
@@ -1022,6 +1051,25 @@ namespace vertical_estimator
                                             double dist_x = abs(distanceComponents(0));
                                             double dist_y = abs(distanceComponents(1));
                                             double dist_z = abs(distanceComponents(2));
+
+                                            visualization_msgs::Marker skew_intersection;
+                                            skew_intersection.header.frame_id = estimation_frame;
+                                            skew_intersection.header.stamp = ros::Time::now();
+                                            skew_intersection.id = nb.uv_id; 
+                                            skew_intersection.type = visualization_msgs::Marker::LINE_STRIP;
+                                            skew_intersection.action = visualization_msgs::Marker::ADD;
+
+                                            skew_intersection.pose.orientation = mrs_lib::AttitudeConverter(0, 0, 0);
+
+                                            skew_intersection.scale.x = 0.1;
+                                            skew_intersection.color.a = 1.0; 
+                                            skew_intersection.color.r = 0.8;
+                                            skew_intersection.color.g = 0.3;
+                                            skew_intersection.color.b = 0.4;
+
+                                            skew_intersection.points.push_back(intersectionAB);
+                                            skew_intersection.points.push_back(intersectionCD);
+                                            pub_skew_intersect.publish(skew_intersection);
                                             
                                             if(minDistance == dist_z){
                                                 ROS_WARN("Values are same!Some issue here");
@@ -1051,9 +1099,9 @@ namespace vertical_estimator
                                                 // new_int.x = intersectionAB.x + (dist_x/2.0);
                                                 // new_int.y = intersectionAB.y + (dist_y/2.0);
                                                 if(intersectionAB.z < intersectionCD.z){
-                                                    new_int.z = intersectionAB.z + (dist_z/2.0);
-                                                } else {
                                                     new_int.z = intersectionCD.z + (dist_z/2.0);
+                                                } else {
+                                                    new_int.z = intersectionAB.z + (dist_z/2.0);
                                                 }
                                                 // new_int.z = (intersectionAB.z + intersectionCD.z)/2.0;
                                                 if(new_int.z < 00){
@@ -1071,7 +1119,7 @@ namespace vertical_estimator
                                                 if(intersectionAB.z < intersectionCD.z){
                                                     // new_int.x = intersectionAB.x + (dist_x/2.0);
                                                     // new_int.y = intersectionAB.y + (dist_y/2.0);
-                                                    double calc_z = intersectionAB.z + (dist_z/2.0);
+                                                    double calc_z = intersectionCD.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0.0){
                                                         // new_int.z = (A.z + C.z)/2.0;
@@ -1086,7 +1134,7 @@ namespace vertical_estimator
                                                 else if (intersectionCD.z < intersectionAB.z){
                                                     // new_int.x = intersectionAB.x + (dist_x/2.0);
                                                     // new_int.y = intersectionAB.y + (dist_y/2.0);
-                                                    double calc_z = intersectionCD.z + (dist_z/2.0);
+                                                    double calc_z = intersectionAB.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0){
                                                         // new_int.z = (A.z + C.z)/2.0;
@@ -1098,7 +1146,8 @@ namespace vertical_estimator
                                                     ROS_ERROR("Line 734 calc");
                                                 }
                                                 }
-                                            }                                            
+                                            } 
+                                                                                      
                                             }
                                             else {
                                                 ROS_ERROR("Something is going terribly wrong!");
@@ -1108,22 +1157,27 @@ namespace vertical_estimator
                                         else{
                                             // Intersecting lines
                                             // https://math.stackexchange.com/questions/270767/find-intersection-of-two-3d-lines
-                                            double k = crossProduct.norm();
+                                             // CROSS OF UNIT VECTORS   
+                                            dirAB.normalize();
+                                            dirCD.normalize();
+                                            Eigen::Vector3d orderedCross;
+                                            orderedCross = dirCD.cross(dirAB);
+                                            double k = orderedCross.norm();
 
                                             Eigen::Vector3d crossCDandL;
-                                            crossCDandL = dirAB.cross(L);
+                                            crossCDandL = dirCD.cross(L);
 
                                             double h = crossCDandL.norm();
 
 
-                                            if(crossCDandL.dot(crossProduct) > 0){
+                                            if(crossCDandL.dot(orderedCross) > 0){
                                                 // new_int.x = A.x + (h/k) * dirAB(0);
                                                 // new_int.y = A.y + (h/k) * dirAB(1);
                                                 new_int.z = A.z + (h/k) * dirAB(2);
                                                 if(new_int.z < 0.0){
                                                     ROS_ERROR("Line 755 calc");
                                                     // new_int.z = (A.z + C.z)/2.0;
-                                                    new_int.z = focal_position.z;
+                                                    // new_int.z = focal_position.z;
                                                 }
                                             } else {
                                                 // new_int.x = A.x - (h/k) * dirAB(0);
@@ -1132,7 +1186,7 @@ namespace vertical_estimator
                                                 if(new_int.z < 0.0){
                                                     ROS_ERROR("Line 760 calc");
                                                     // new_int.z = (A.z + C.z)/2.0;
-                                                    new_int.z = focal_position.z;
+                                                    // new_int.z = focal_position.z;
                                                 }
                                             }
                                             ROS_WARN("Intersecting Lines");
@@ -1241,7 +1295,7 @@ namespace vertical_estimator
                                     // double gt_dist = sqrt(pow(focal_position.x - new_int.x, 2) + pow(focal_position.y - new_int.y, 2) + pow(focal_position.z - new_int.z, 2));
                                     double gt_dist = sqrt(pow(focal_position.z - new_int.z, 2));
 
-                                    if(abs(det) > 0.0001 && gt_dist <= 5.0)
+                                    if(abs(det) > 0.0001 && gt_dist <= 1.0)
                                     {
                                         ROS_INFO(
                                             "D: %f, h_diff: %f, gap: %f, nb_dt: %f, eb1: %f, eb2: %f, eb3: %f, ea1: %f, ea2: %f, "
@@ -1338,7 +1392,7 @@ namespace vertical_estimator
                                                 z(2) = new_int.z; /* need intersection point of all poses*/
 
                                                 filter_state_focal = filter->correct(filter_state_focal, z, R);
-                                                if (isnan(filter_state_focal.x(4)))
+                                                if (isnan(filter_state_focal.x(6)))
                                                 {
                                                     ROS_ERROR("Filter error on line 852");
                                                 }
@@ -1410,7 +1464,11 @@ namespace vertical_estimator
                             (ros::Time::now() - agents[aid].last_meas_u).toSec() >= 4.0)
                         // if(eigvals(2).real() < 500 && (ros::Time::now() - agents[aid].last_meas_u).toSec() >= 4.0)
                         {
-                            
+                            geometry_msgs::Point resl_debug;
+                            resl_debug.x = res_l_.value().pose.pose.position.x;
+                            resl_debug.y = res_l_.value().pose.pose.position.y;
+                            resl_debug.z = res_l_.value().pose.pose.position.z;
+                            pub_resl_debug.publish(resl_debug);
                             try
                             {
                                 filter->H = H_n(Po);
@@ -1606,57 +1664,57 @@ namespace vertical_estimator
 
             double az_linear = az_raw - 9.8066;
 
-            // for(int i=0; i < 1; i++){
-            //     vel_outlier.push_back(0.0);
-            //     acc_outlier.push_back(0.0);
-            // }
+            for(int i=0; i < 1; i++){
+                vel_outlier.push_back(0.0);
+                acc_outlier.push_back(0.0);
+            }
 
             double dt = (ros::Time::now() - last_imu_update).toSec();
 
-            // if(az_raw > 9.70 && az_raw < 9.90){
-            //     az_linear = 0.0;
-            // }
+            if(az_raw > 9.70 && az_raw < 9.90){
+                az_linear = 0.0;
+            }
 
-            // if(acc_outlier.back() - az_linear > 3.0 || acc_outlier.back() - az_linear < -3.0){
-            //     ROS_WARN("REPLACING acc %f with acc %f", az_linear, acc_outlier.back());
-            //     az_linear = acc_outlier.back();
-            // }
-            // acc_outlier.push_back(az_linear);
+            if(acc_outlier.back() - az_linear > 3.0 || acc_outlier.back() - az_linear < -3.0){
+                ROS_WARN("REPLACING acc %f with acc %f", az_linear, acc_outlier.back());
+                az_linear = acc_outlier.back();
+            }
+            acc_outlier.push_back(az_linear);
 
-            // if(az_linear < 0.05 && az_linear > -0.05){
-            //     az_linear = 0.0;
-            // }
+            if(az_linear < 0.05 && az_linear > -0.05){
+                az_linear = 0.0;
+            }
 
-            // if(ax < 0.05 && ax > -0.05){
-            //     ax = 0.0;
-            // }
+            if(ax < 0.05 && ax > -0.05){
+                ax = 0.0;
+            }
 
-            // if(ay < 0.05 && ay > -0.05){
-            //     ay = 0.0;
-            // }
+            if(ay < 0.05 && ay > -0.05){
+                ay = 0.0;
+            }
 
             velocity_imu_focal.x = velocity_imu_focal.x + ax * dt;
             velocity_imu_focal.y = velocity_imu_focal.y + ay * dt;
             velocity_imu_focal.z =  velocity_imu_focal.z + az_linear * dt;
             last_imu_update = ros::Time::now();
             
-            // if(vel_outlier.back() - velocity_imu_focal.z > 2.0 || vel_outlier.back() - velocity_imu_focal.z < -2.0){
-            //     ROS_WARN("!!!!Replacing vel %f with %f!!!!",velocity_imu_focal.z, vel_outlier.back());
-            //     velocity_imu_focal.z = vel_outlier.back();
-            // }
-            // vel_outlier.push_back(velocity_imu_focal.z);
+            if(vel_outlier.back() - velocity_imu_focal.z > 2.0 || vel_outlier.back() - velocity_imu_focal.z < -2.0){
+                ROS_WARN("!!!!Replacing vel %f with %f!!!!",velocity_imu_focal.z, vel_outlier.back());
+                velocity_imu_focal.z = vel_outlier.back();
+            }
+            vel_outlier.push_back(velocity_imu_focal.z);
            
-            // if(velocity_imu_focal.z < 0.05 && velocity_imu_focal.z > - 0.05){
-            //     velocity_imu_focal.z = 0.0;
-            // }
+            if(velocity_imu_focal.z < 0.05 && velocity_imu_focal.z > - 0.05){
+                velocity_imu_focal.z = 0.0;
+            }
 
-            // if(velocity_imu_focal.x < 0.05 && velocity_imu_focal.x > - 0.05){
-            //     velocity_imu_focal.x = 0.0;
-            // }
+            if(velocity_imu_focal.x < 0.05 && velocity_imu_focal.x > - 0.05){
+                velocity_imu_focal.x = 0.0;
+            }
 
-            // if(velocity_imu_focal.y < 0.05 && velocity_imu_focal.y > - 0.05){
-            //     velocity_imu_focal.y = 0.0;
-            // }
+            if(velocity_imu_focal.y < 0.05 && velocity_imu_focal.y > - 0.05){
+                velocity_imu_focal.y = 0.0;
+            }
 
             geometry_msgs::Point imu_vel;
             imu_vel.x = velocity_imu_focal.x;
@@ -1832,25 +1890,25 @@ namespace vertical_estimator
 
             pub_thrust_debug.publish(th_debug);
 
-            // try {
-            //             filter->H << 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            //                                 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            //                                 0, 0, 0, 0, 0, 0, 0, 0, 1;
-            //             R_t R;
-            //             R = Eigen::MatrixXd::Identity(3,3) * 0.1;
-            //             Eigen::VectorXd z(3);
-            //             z(2) = thrust_acc_corrected;
+            try {
+                        filter->H << 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0, 1;
+                        R_t R;
+                        R = Eigen::MatrixXd::Identity(3,3) * 0.1;
+                        Eigen::VectorXd z(3);
+                        z(2) = thrust_acc_corrected;
 
-            //             filter_state_focal = filter->correct(filter_state_focal, z, R);
-            //             if(isnan(filter_state_focal.x(4))){
-            //                 ROS_ERROR("Filter error on line 1606");
-            //             }
+                        filter_state_focal = filter->correct(filter_state_focal, z, R);
+                        if(isnan(filter_state_focal.x(4))){
+                            ROS_ERROR("Filter error on line 1606");
+                        }
                         
-            //             last_meas_focal = ros::Time::now();
-            // } 
-            // catch([[maybe_unused]] std::exception e){
-            //     ROS_ERROR("LKF failed: %s", e.what());
-            // }
+                        last_meas_focal = ros::Time::now();
+            } 
+            catch([[maybe_unused]] std::exception e){
+                ROS_ERROR("LKF failed: %s", e.what());
+            }
         }
 
         sensor_msgs::Range transformRangeMessage(const sensor_msgs::Range &range_msg){
@@ -1990,6 +2048,8 @@ namespace vertical_estimator
 
         ros::Publisher pub_ground_truth;
         ros::Publisher pub_uvdar_pos_debug;
+
+        ros::Publisher pub_resl_debug;
 
         ros::Subscriber sub_main_odom;
         ros::Subscriber sub_state_odom;
@@ -2200,6 +2260,11 @@ namespace vertical_estimator
         ros::Publisher pub_agent_pose;
 
         ros::Publisher pub_filter_debug;
+
+        ros::Publisher pub_nb_point;
+        ros::Publisher pub_agent_point;
+
+        ros::Publisher pub_skew_intersect;
     };
 
 } // namespace vertical_estimator
