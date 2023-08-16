@@ -1014,8 +1014,8 @@ namespace vertical_estimator
                                     if(abs(det) < 0.0001){
                                         ROS_ERROR("Intersection not found, det:%f", det);
                                     } else {
-                                        new_int.x = (b2*c1 - b1*c2)/det;
-                                        new_int.y = (a1*c2 - a2*c1)/det;
+                                        // new_int.x = (b2*c1 - b1*c2)/det;
+                                        // new_int.y = (a1*c2 - a2*c1)/det;
                                     }
                                   
                                     if(crossProduct.norm() > 1e-6){
@@ -1078,8 +1078,8 @@ namespace vertical_estimator
                                             if(dist_z > 0.0){
                                             ROS_WARN("Skew Lines");
                                             if(dirAB(2) < 0.0 && dirCD(2) < 0.0){
-                                            //   new_int.x = intersectionAB.x + (dist_x/2.0);
-                                            //   new_int.y = intersectionAB.y + (dist_y/2.0);
+                                              new_int.x = intersectionAB.x + (dist_x/2.0);
+                                              new_int.y = intersectionAB.y + (dist_y/2.0);
                                               if(intersectionAB.z > intersectionCD.z){
                                                 new_int.z = (intersectionAB.z) - (dist_z/2.0);
                                               } else {
@@ -1088,16 +1088,16 @@ namespace vertical_estimator
                                             //   new_int.z = (intersectionAB.z + intersectionCD.z)/2.0;
                                                 if(new_int.z < 0){
                                                     ROS_ERROR("Line 714 calc");
-                                                    // new_int.z = (A.z + C.z)/2.0;
-                                                    new_int.z = focal_position.z;
+                                                    new_int.z = (A.z + C.z)/2.0;
+                                                    // new_int.z = focal_position.z;
                                                     if(new_int.z < 0.0){
                                                         ROS_ERROR("Still negative at 714");
                                                     }
                                                 }
                                             }
                                             else if(dirAB(2) > 0.0 && dirCD(2) > 0.0){
-                                                // new_int.x = intersectionAB.x + (dist_x/2.0);
-                                                // new_int.y = intersectionAB.y + (dist_y/2.0);
+                                                new_int.x = intersectionAB.x + (dist_x/2.0);
+                                                new_int.y = intersectionAB.y + (dist_y/2.0);
                                                 if(intersectionAB.z < intersectionCD.z){
                                                     new_int.z = intersectionCD.z + (dist_z/2.0);
                                                 } else {
@@ -1106,8 +1106,8 @@ namespace vertical_estimator
                                                 // new_int.z = (intersectionAB.z + intersectionCD.z)/2.0;
                                                 if(new_int.z < 00){
                                                     ROS_ERROR("Line 720 calc");
-                                                    // new_int.z = (A.z + C.z)/2.0;
-                                                    new_int.z = focal_position.z;
+                                                    new_int.z = (A.z + C.z)/2.0;
+                                                    // new_int.z = focal_position.z;
                                                     if(new_int.z < 0.0){
                                                         ROS_ERROR("Terrible error!!!");
                                                         
@@ -1117,13 +1117,13 @@ namespace vertical_estimator
                                             else {
                                                 ROS_WARN("Opposite Slopes");
                                                 if(intersectionAB.z < intersectionCD.z){
-                                                    // new_int.x = intersectionAB.x + (dist_x/2.0);
-                                                    // new_int.y = intersectionAB.y + (dist_y/2.0);
+                                                    new_int.x = intersectionAB.x + (dist_x/2.0);
+                                                    new_int.y = intersectionAB.y + (dist_y/2.0);
                                                     double calc_z = intersectionCD.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0.0){
-                                                        // new_int.z = (A.z + C.z)/2.0;
-                                                        new_int.z = focal_position.z;
+                                                        new_int.z = (A.z + C.z)/2.0;
+                                                        // new_int.z = focal_position.z;
                                                     } else {
                                                         new_int.z = calc_z;
                                                     }
@@ -1132,13 +1132,13 @@ namespace vertical_estimator
                                                     }
                                                 }
                                                 else if (intersectionCD.z < intersectionAB.z){
-                                                    // new_int.x = intersectionAB.x + (dist_x/2.0);
-                                                    // new_int.y = intersectionAB.y + (dist_y/2.0);
+                                                    new_int.x = intersectionAB.x + (dist_x/2.0);
+                                                    new_int.y = intersectionAB.y + (dist_y/2.0);
                                                     double calc_z = intersectionAB.z + (dist_z/2.0);
                                                     // new_int.z = calc_z;
                                                     if(calc_z < 0){
-                                                        // new_int.z = (A.z + C.z)/2.0;
-                                                        new_int.z = focal_position.z;
+                                                        new_int.z = (A.z + C.z)/2.0;
+                                                        // new_int.z = focal_position.z;
                                                     } else {
                                                         new_int.z = calc_z;
                                                     }
@@ -1171,8 +1171,8 @@ namespace vertical_estimator
 
 
                                             if(crossCDandL.dot(orderedCross) > 0){
-                                                // new_int.x = A.x + (h/k) * dirAB(0);
-                                                // new_int.y = A.y + (h/k) * dirAB(1);
+                                                new_int.x = A.x + (h/k) * dirAB(0);
+                                                new_int.y = A.y + (h/k) * dirAB(1);
                                                 new_int.z = A.z + (h/k) * dirAB(2);
                                                 if(new_int.z < 0.0){
                                                     ROS_ERROR("Line 755 calc");
@@ -1180,8 +1180,8 @@ namespace vertical_estimator
                                                     // new_int.z = focal_position.z;
                                                 }
                                             } else {
-                                                // new_int.x = A.x - (h/k) * dirAB(0);
-                                                // new_int.y = A.y - (h/k) * dirAB(1);
+                                                new_int.x = A.x - (h/k) * dirAB(0);
+                                                new_int.y = A.y - (h/k) * dirAB(1);
                                                 new_int.z = A.z - (h/k) * dirAB(2);
                                                 if(new_int.z < 0.0){
                                                     ROS_ERROR("Line 760 calc");
@@ -1208,8 +1208,8 @@ namespace vertical_estimator
                                         
                                         
                                         
-                                        // new_int.x = (A.x) + (dist_x/2.0);
-                                        // new_int.y = (A.y) + (dist_y/2.0);
+                                        new_int.x = (A.x) + (dist_x/2.0);
+                                        new_int.y = (A.y) + (dist_y/2.0);
                                         new_int.z = (A.z) + (dist_z/2.0);
                                     
                                     } 
@@ -1295,7 +1295,7 @@ namespace vertical_estimator
                                     // double gt_dist = sqrt(pow(focal_position.x - new_int.x, 2) + pow(focal_position.y - new_int.y, 2) + pow(focal_position.z - new_int.z, 2));
                                     double gt_dist = sqrt(pow(focal_position.z - new_int.z, 2));
 
-                                    if(abs(det) > 0.0001 && gt_dist <= 1.0)
+                                    if(abs(det) > 0.0001 && gt_dist <= 0.5)
                                     {
                                         ROS_INFO(
                                             "D: %f, h_diff: %f, gap: %f, nb_dt: %f, eb1: %f, eb2: %f, eb3: %f, ea1: %f, ea2: %f, "
