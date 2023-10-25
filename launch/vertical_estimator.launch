@@ -26,6 +26,7 @@
       <param name="odom_state_topic" value="/$(arg uav_name)/odometry/uav_state" />
 
       <param name="odom_main" value="/$(arg uav_name)/odometry/odom_main" />
+      <param name="truth" value="/$(arg uav_name)/ground_truth"/>
     
       <param name="odom_main_topic" value="/odometry/odom_main" />
       <param name="odom_imu_topic" value="/$(arg uav_name)/odometry/imu_untilted" />
@@ -39,6 +40,7 @@
       <param name="thrust_force_topic" value="/$(arg uav_name)/control_manager/thrust_force"/>
 
       <param name="height_topic" value="/odometry/height"/>
+      <param name="truth_topic" value="/ground_truth"/>
 
       <!-- <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R"] </rosparam> -->
       <rosparam     param="measured_poses_topics"> ["measured_poses_L", "measured_poses_R"] </rosparam>
